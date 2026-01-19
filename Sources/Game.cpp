@@ -22,6 +22,18 @@ ComPtr<ID3D11Buffer> vertexBuffer;
 ComPtr<ID3D11Buffer> indexBuffer;
 ComPtr<ID3D11InputLayout> inputLayout;
 
+struct ModelData {
+	Matrix mModel;
+};
+struct CameraData {
+	Matrix mView;
+	Matrix mProj;
+};
+
+Matrix mProjection;
+ComPtr<ID3D11Buffer> cbModel;
+ComPtr<ID3D11Buffer> cbCamera;
+
 // Game
 Game::Game() noexcept(false) {
 	m_deviceResources = std::make_unique<DeviceResources>(DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_FORMAT_D32_FLOAT, 2);
@@ -47,6 +59,13 @@ void Game::Initialize(HWND window, int width, int height) {
 
 	basicShader = new Shader(L"Basic");
 	basicShader->Create(m_deviceResources.get());
+
+	mProjection = Matrix::CreatePerspectiveFieldOfView(
+		60 * XM_PI / 180.0f,
+		(float)width / (float)height,
+		0.01f, 
+		100.0f
+	);
 
 	auto device = m_deviceResources->GetD3DDevice();
 
@@ -95,6 +114,29 @@ void Game::Initialize(HWND window, int width, int height) {
 			&desc,
 			&initialData,
 			indexBuffer.ReleaseAndGetAddressOf()
+		);
+	}
+
+	{ // CONSTANT BUFFER MODEL INIT
+		CD3D11_BUFFER_DESC desc(
+			sizeof(ModelData),
+			D3D11_BIND_CONSTANT_BUFFER
+		);
+		device->CreateBuffer(
+			&desc,
+			NULL,
+			cbModel.ReleaseAndGetAddressOf()
+		);
+	}
+	{ // CONSTANT BUFFER CAMERA INIT
+		CD3D11_BUFFER_DESC desc(
+			sizeof(CameraData),
+			D3D11_BIND_CONSTANT_BUFFER
+		);
+		device->CreateBuffer(
+			&desc,
+			NULL,
+			cbCamera.ReleaseAndGetAddressOf()
 		);
 	}
 }
@@ -147,7 +189,33 @@ void Game::Render() {
 	context->IASetVertexBuffers(0, 1, vbs, strides, offsets);
 	context->IASetIndexBuffer(indexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
 
-	context->DrawIndexed(6, 0, 0);
+	ID3D11Buffer* cbs[] = { cbModel.Get(), cbCamera.Get() };
+	context->VSSetConstantBuffers(0, 2, cbs);
+
+	CameraData cameraData = {};
+	cameraData.mView = Matrix::CreateLookAt(
+		Vector3::Backward * 5,
+		Vector3::Zero,
+		Vector3::Up
+	).Transpose();
+	cameraData.mProj = mProjection.Transpose();
+	context->UpdateSubresource(cbCamera.Get(), 0, NULL, &cameraData, 0, 0);
+
+	for (int i = 0; i < 10; i++) {
+		ModelData modelData = {};
+		Matrix model = Matrix::CreateRotationZ(m_timer.GetTotalSeconds());
+		if(i % 2) 
+			model *= Matrix::CreateRotationY(m_timer.GetTotalSeconds() + i * XM_PI / 180.0f * 45);
+		model *= Matrix::CreateTranslation(
+			cos(m_timer.GetTotalSeconds() + i * XM_PI / 180.0f * 45),
+			sin(m_timer.GetTotalSeconds() + i * XM_PI / 180.0f * 45),
+			0);
+
+		modelData.mModel = model.Transpose();
+		context->UpdateSubresource(cbModel.Get(), 0, NULL, &modelData, 0, 0);
+
+		context->DrawIndexed(6, 0, 0);
+	}
 
 	// envoie nos commandes au GPU pour etre afficher � l'�cran
 	m_deviceResources->Present();
@@ -178,6 +246,12 @@ void Game::OnWindowSizeChanged(int width, int height) {
 	if (!m_deviceResources->WindowSizeChanged(width, height))
 		return;
 
+	mProjection = Matrix::CreatePerspectiveFieldOfView(
+		60 * XM_PI / 180.0f,
+		(float)width / (float)height,
+		0.01f,
+		100.0f
+	);
 	// The windows size has changed:
 	// We can realloc here any resources that depends on the target resolution (post processing etc)
 }
