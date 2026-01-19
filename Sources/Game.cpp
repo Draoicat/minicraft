@@ -15,11 +15,27 @@ using namespace DirectX::SimpleMath;
 
 using Microsoft::WRL::ComPtr;
 
+struct ModelData
+{
+	Matrix mModel;
+};
+
+struct CameraData
+{
+	Matrix mView;
+	Matrix mProjection;
+};
+
 // Global stuff
 Shader* basicShader;
 
 ComPtr<ID3D11Buffer> vertexBuffer;
+ComPtr<ID3D11Buffer> indexBuffer;
 ComPtr<ID3D11InputLayout> inputLayout;
+ComPtr<ID3D11Buffer> modelBuffer;
+ComPtr<ID3D11Buffer> cameraBuffer;
+
+Matrix mProjection;
 
 // Game
 Game::Game() noexcept(false) {
@@ -47,17 +63,73 @@ void Game::Initialize(HWND window, int width, int height) {
 	basicShader = new Shader(L"Basic");
 	basicShader->Create(m_deviceResources.get());
 
+	mProjection = Matrix::CreatePerspectiveFieldOfView(60 * XM_PI / 180.0f, (float)width / (float)height, 0.01f, 100.0f);
+
 	auto device = m_deviceResources->GetD3DDevice();
 
 	const std::vector<D3D11_INPUT_ELEMENT_DESC> InputElementDescs = {
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
 	};
 	device->CreateInputLayout(
 		InputElementDescs.data(), InputElementDescs.size(),
 		basicShader->vsBytecode.data(), basicShader->vsBytecode.size(),
-		inputLayout.ReleaseAndGetAddressOf());
+		inputLayout.ReleaseAndGetAddressOf()
+	);
 
-	// TP: allouer vertexBuffer ici
+	// MODEL AND CAMERA
+	CD3D11_BUFFER_DESC modelDesc(
+		sizeof(ModelData),
+		D3D11_BIND_CONSTANT_BUFFER
+	);
+
+	CD3D11_BUFFER_DESC cameraDesc(
+		sizeof(CameraData),
+		D3D11_BIND_CONSTANT_BUFFER
+	);
+
+
+	device->CreateBuffer(
+		&modelDesc,nullptr, modelBuffer.ReleaseAndGetAddressOf()
+	);
+
+	device->CreateBuffer(
+		&cameraDesc, nullptr, cameraBuffer.ReleaseAndGetAddressOf()
+	);
+
+	// RECTANGLE
+	std::vector<float> data = {
+		-0.5f, 0.5f, 0.0f,		1.0f, 0.0f, 0.0f, 
+		0.5f, 0.5f, 0.0f,		0.0f, 1.0f, 0.0f, 
+		0.5f, -0.5f, 0.0f,		0.0f, 0.0f, 1.0f, 
+		-0.5f, -0.5f, 0.0f,		1.0f, 0.0f, 1.0f 
+	};
+
+	CD3D11_BUFFER_DESC desc(
+		sizeof(float) * data.size(),
+		D3D11_BIND_VERTEX_BUFFER
+	);
+
+	D3D11_SUBRESOURCE_DATA subResData = {};
+	subResData.pSysMem = data.data();
+
+	device->CreateBuffer(
+		&desc, &subResData, vertexBuffer.ReleaseAndGetAddressOf()
+	);
+
+	std::vector<uint32_t> indexes = { 0, 1, 2, 2, 3, 0 };
+
+	CD3D11_BUFFER_DESC descIndex(
+		sizeof(float) * indexes.size(),
+		D3D11_BIND_INDEX_BUFFER
+	);
+
+	D3D11_SUBRESOURCE_DATA subResDataIndexes = {};
+	subResDataIndexes.pSysMem = indexes.data();
+
+	device->CreateBuffer(
+		&descIndex, &subResDataIndexes, indexBuffer.ReleaseAndGetAddressOf()
+	);
 }
 
 void Game::Tick() {
@@ -102,12 +174,55 @@ void Game::Render() {
 
 	basicShader->Apply(m_deviceResources.get());
 
+	ID3D11Buffer* cbs[] = { modelBuffer.Get(), cameraBuffer.Get() };
+	context->VSSetConstantBuffers(
+		0, 2, cbs
+	);
+
+	CameraData cameraData = {};
+	ModelData modelData = {};
+
+	modelData.mModel = Matrix::Identity;
+	cameraData.mView = Matrix::CreateLookAt(
+		Vector3::Backward,
+		Vector3::Zero,
+		Vector3::Up
+	).Transpose();
+	cameraData.mProjection = mProjection.Transpose();
+
+	context->UpdateSubresource(
+		modelBuffer.Get(),
+		0,
+		nullptr,
+		&modelData,
+		0,
+		0
+	);
+	context->UpdateSubresource(
+		cameraBuffer.Get(),
+		0,
+		nullptr,
+		&cameraData,
+		0,
+		0
+	);
+
+
 	// TP: Tracer votre vertex buffer ici
+	ID3D11Buffer* vbs[] = { vertexBuffer.Get() };
+	UINT strides[] = { sizeof(float) * 6 };
+	UINT offsets[] = { 0 };
+
+	ID3D11Buffer* idxbs[] = { indexBuffer.Get() };
+	
+
+	context->IASetVertexBuffers(0, 1, vbs, strides, offsets);
+	context->IASetIndexBuffer(indexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
+	context->DrawIndexed(6, 0, 0);
 
 	// envoie nos commandes au GPU pour etre afficher � l'�cran
 	m_deviceResources->Present();
 }
-
 
 #pragma region Message Handlers
 void Game::OnActivated() {}
@@ -130,8 +245,10 @@ void Game::OnDisplayChange() {
 }
 
 void Game::OnWindowSizeChanged(int width, int height) {
+
 	if (!m_deviceResources->WindowSizeChanged(width, height))
 		return;
+	mProjection = Matrix::CreatePerspectiveFieldOfView(60 * XM_PI / 180.0f, (float)width / (float)height, 0.01f, 100.0f);
 
 	// The windows size has changed:
 	// We can realloc here any resources that depends on the target resolution (post processing etc)
