@@ -9,6 +9,7 @@
 #include "Engine/Buffer.h"
 #include "Engine/VertexLayout.h"
 #include "Engine/Shader.h"
+#include "Minicraft/Cube.h"
 
 extern void ExitGame() noexcept;
 
@@ -19,9 +20,6 @@ using Microsoft::WRL::ComPtr;
 
 // Global stuff
 Shader* basicShader;
-
-VertexBuffer<VertexLayout_Position> vertexBuffer;
-IndexBuffer indexBuffer;
 
 struct ModelData {
 	Matrix mModel;
@@ -34,6 +32,7 @@ struct CameraData {
 Matrix mProjection;
 ConstantBuffer<ModelData> cbModel;
 ConstantBuffer<CameraData> cbCamera;
+Cube cube(Vector3::Zero);
 
 // Game
 Game::Game() noexcept(false) {
@@ -70,18 +69,9 @@ void Game::Initialize(HWND window, int width, int height) {
 
 	auto device = m_deviceResources->GetD3DDevice();
 
-	GenerateInputLayout<VertexLayout_Position>(m_deviceResources.get(), basicShader);
+	GenerateInputLayout<VertexLayout_PositionUV>(m_deviceResources.get(), basicShader);
 
-	vertexBuffer.PushVertex({ {-0.5f,  0.5f, 0.0f} });
-	vertexBuffer.PushVertex({ { 0.5f, -0.5f, 0.0f} });
-	vertexBuffer.PushVertex({ {-0.5f, -0.5f, 0.0f} });
-	vertexBuffer.PushVertex({ { 0.5f,  0.5f, 0.0f} });
-	vertexBuffer.Create(m_deviceResources.get());
-
-	indexBuffer.PushTriangle(0, 1, 2);
-	indexBuffer.PushTriangle(0, 3, 1);
-	indexBuffer.Create(m_deviceResources.get());
-
+	cube.Generate(m_deviceResources.get());
 	cbModel.Create(m_deviceResources.get());
 	cbCamera.Create(m_deviceResources.get());
 }
@@ -125,12 +115,10 @@ void Game::Render() {
 	
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	
-	ApplyInputLayout<VertexLayout_Position>(m_deviceResources.get());
+	ApplyInputLayout<VertexLayout_PositionUV>(m_deviceResources.get());
 
 	basicShader->Apply(m_deviceResources.get());
 
-	vertexBuffer.Apply(m_deviceResources.get());
-	indexBuffer.Apply(m_deviceResources.get());
 	cbModel.ApplyToVS(m_deviceResources.get(), 0);
 	cbCamera.ApplyToVS(m_deviceResources.get(), 1);
 
@@ -142,16 +130,16 @@ void Game::Render() {
 	cbCamera.data.mProj = mProjection.Transpose();
 	cbCamera.Update(m_deviceResources.get());
 
-	Matrix model = Matrix::CreateRotationZ(m_timer.GetTotalSeconds());
-	model *= Matrix::CreateTranslation(
+	Matrix model = Matrix::CreateRotationY(m_timer.GetTotalSeconds());
+	/*model *= Matrix::CreateTranslation(
 		cos(m_timer.GetTotalSeconds()),
 		sin(m_timer.GetTotalSeconds()),
-		0);
+		0);*/
 
 	cbModel.data.mModel = model.Transpose();
 	cbModel.Update(m_deviceResources.get());
 
-	context->DrawIndexed(indexBuffer.Size(), 0, 0);
+	cube.Draw(m_deviceResources.get());
 
 	// envoie nos commandes au GPU pour etre afficher � l'�cran
 	m_deviceResources->Present();
