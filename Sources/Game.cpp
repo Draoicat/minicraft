@@ -69,7 +69,7 @@ void Game::Initialize(HWND window, int width, int height) {
 
 	const std::vector<D3D11_INPUT_ELEMENT_DESC> InputElementDescs = {
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		{ "COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
+		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
 	};
 	device->CreateInputLayout(
 		InputElementDescs.data(), InputElementDescs.size(),
@@ -88,7 +88,6 @@ void Game::Initialize(HWND window, int width, int height) {
 		D3D11_BIND_CONSTANT_BUFFER
 	);
 
-
 	device->CreateBuffer(
 		&modelDesc,nullptr, modelBuffer.ReleaseAndGetAddressOf()
 	);
@@ -97,35 +96,57 @@ void Game::Initialize(HWND window, int width, int height) {
 		&cameraDesc, nullptr, cameraBuffer.ReleaseAndGetAddressOf()
 	);
 
-	// RECTANGLE
-	std::vector<float> data = {
-		-0.5f, 0.5f, 0.0f,		1.0f, 0.0f, 0.0f, 
-		0.5f, 0.5f, 0.0f,		0.0f, 1.0f, 0.0f, 
-		0.5f, -0.5f, 0.0f,		0.0f, 0.0f, 1.0f, 
-		-0.5f, -0.5f, 0.0f,		1.0f, 0.0f, 1.0f 
+	//// RECTANGLE
+	//std::vector<float> data = {
+	//	-0.5f, 0.5f, 0.0f,		1.0f, 0.0f, 0.0f, 
+	//	0.5f, 0.5f, 0.0f,		0.0f, 1.0f, 0.0f, 
+	//	0.5f, -0.5f, 0.0f,		0.0f, 0.0f, 1.0f, 
+	//	-0.5f, -0.5f, 0.0f,		1.0f, 0.0f, 1.0f 
+	//};
+
+	//CUBE
+
+	std::vector<float> cube = {
+		-3.0f, 3.0f, -3.0f,
+		3.0f, 3.0f, -3.0f,
+		-3.0f, -3.0f, -3.0,
+		3.0f, -3.0f, -3.0f,
+		- 3.0f, 3.0f, 3.0f,
+		3.0f, 3.0f, 3.0f,
+		-3.0f, -3.0f, 3.0f,
+		3.0f, -3.0f, 3.0f
 	};
 
 	CD3D11_BUFFER_DESC desc(
-		sizeof(float) * data.size(),
+		sizeof(float) * cube.size(),
 		D3D11_BIND_VERTEX_BUFFER
 	);
 
 	D3D11_SUBRESOURCE_DATA subResData = {};
-	subResData.pSysMem = data.data();
+	subResData.pSysMem = cube.data();
 
 	device->CreateBuffer(
 		&desc, &subResData, vertexBuffer.ReleaseAndGetAddressOf()
 	);
 
-	std::vector<uint32_t> indexes = { 0, 1, 2, 2, 3, 0 };
+	//std::vector<uint32_t> indexes = { 0, 1, 2, 2, 3, 0 };
+
+	std::vector<uint32_t> indexesCube = {
+		3,1,2,2,1,0,
+		2,0,6,6,0,4,
+		4,5,6,6,5,7,
+		5,1,7,7,1,3,
+		1,5,0,0,5,4,
+		6,7,2,2,7,3,
+	};
 
 	CD3D11_BUFFER_DESC descIndex(
-		sizeof(float) * indexes.size(),
+		sizeof(float) * indexesCube.size(),
 		D3D11_BIND_INDEX_BUFFER
 	);
 
 	D3D11_SUBRESOURCE_DATA subResDataIndexes = {};
-	subResDataIndexes.pSysMem = indexes.data();
+	subResDataIndexes.pSysMem = indexesCube.data();
 
 	device->CreateBuffer(
 		&descIndex, &subResDataIndexes, indexBuffer.ReleaseAndGetAddressOf()
@@ -184,20 +205,12 @@ void Game::Render() {
 
 	modelData.mModel = Matrix::Identity;
 	cameraData.mView = Matrix::CreateLookAt(
-		Vector3::Backward,
+		Vector3::Backward * 10,
 		Vector3::Zero,
 		Vector3::Up
 	).Transpose();
 	cameraData.mProjection = mProjection.Transpose();
 
-	context->UpdateSubresource(
-		modelBuffer.Get(),
-		0,
-		nullptr,
-		&modelData,
-		0,
-		0
-	);
 	context->UpdateSubresource(
 		cameraBuffer.Get(),
 		0,
@@ -207,18 +220,42 @@ void Game::Render() {
 		0
 	);
 
+	for (int i = 0; i < 10; ++i)
+	{
+		Matrix model = Matrix::Identity;
+		model *= Matrix::CreateScale(0.3f);
+		model *= Matrix::CreateRotationZ(m_timer.GetTotalSeconds() * XM_PI / 180.0f * 45);
+		model *= Matrix::CreateRotationX(m_timer.GetTotalSeconds() * XM_PI / 180.0f * 60);
+		model *= Matrix::CreateRotationY(m_timer.GetTotalSeconds() * XM_PI / 180.0f * 90);
 
-	// TP: Tracer votre vertex buffer ici
-	ID3D11Buffer* vbs[] = { vertexBuffer.Get() };
-	UINT strides[] = { sizeof(float) * 6 };
-	UINT offsets[] = { 0 };
+		model *= Matrix::CreateTranslation(
+			tan(m_timer.GetTotalSeconds() * XM_PI / 180.0f * 45 + i * 10),
+			tan(m_timer.GetTotalSeconds() * XM_PI / 180.0f * 45 + i * 10),
+			0
+		);
 
-	ID3D11Buffer* idxbs[] = { indexBuffer.Get() };
-	
+		modelData.mModel = model.Transpose();
 
-	context->IASetVertexBuffers(0, 1, vbs, strides, offsets);
-	context->IASetIndexBuffer(indexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
-	context->DrawIndexed(6, 0, 0);
+		;context->UpdateSubresource(
+			modelBuffer.Get(),
+			0,
+			nullptr,
+			&modelData,
+			0,
+			0
+		);
+
+
+		// TP: Tracer votre vertex buffer ici
+		ID3D11Buffer* vbs[] = { vertexBuffer.Get() };
+		UINT strides[] = { sizeof(float) * 3 };
+		UINT offsets[] = { 0 };
+
+		context->IASetVertexBuffers(0, 1, vbs, strides, offsets);
+		context->IASetIndexBuffer(indexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
+		context->DrawIndexed(36, 0, 0);
+		//context->Draw(36, 0);
+	}
 
 	// envoie nos commandes au GPU pour etre afficher � l'�cran
 	m_deviceResources->Present();
