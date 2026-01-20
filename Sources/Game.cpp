@@ -9,7 +9,8 @@
 #include "Engine/Buffer.h"
 #include "Engine/VertexLayout.h"
 #include "Engine/Shader.h"
-
+#include "Engine/Texture.h"
+#include "Minicraft/Cube.h"
 
 extern void ExitGame() noexcept;
 
@@ -18,35 +19,31 @@ using namespace DirectX::SimpleMath;
 
 using Microsoft::WRL::ComPtr;
 
-struct ModelData
-{
-	Matrix mModel;
-};
-
-struct CameraData
-{
-	Matrix mView;
-	Matrix mProjection;
-};
-
 // Global stuff
-Shader* basicShader;
+Shader basicShader(L"basic");
+Texture terrain(L"terrain");
 
-VertexBuffer<VertexLayout_PositionColor> vertexBuffer;
-IndexBuffer indexBuffer;
-ConstantBuffer<ModelData> modelBuffer;
-ConstantBuffer<CameraData> cameraBuffer;
+struct ModelData {
+	Matrix mModel;
+	Vector4 time;
+};
+struct CameraData {
+	Matrix mView;
+	Matrix mProj;
+};
 
 Matrix mProjection;
+ConstantBuffer<ModelData> cbModel;
+ConstantBuffer<CameraData> cbCamera;
+Cube cube(0, 0, 0);
 
 // Game
 Game::Game() noexcept(false) {
-	m_deviceResources = std::make_unique<DeviceResources>(DXGI_FORMAT_B8G8R8A8_UNORM, DXGI_FORMAT_D32_FLOAT, 2);
+	m_deviceResources = std::make_unique<DeviceResources>(DXGI_FORMAT_B8G8R8A8_UNORM_SRGB, DXGI_FORMAT_D32_FLOAT, 2);
 	m_deviceResources->RegisterDeviceNotify(this);
 }
 
 Game::~Game() {
-	delete basicShader;
 	g_inputLayouts.clear();
 }
 
@@ -62,66 +59,24 @@ void Game::Initialize(HWND window, int width, int height) {
 	m_deviceResources->CreateDeviceResources();
 	m_deviceResources->CreateWindowSizeDependentResources();
 
-	basicShader = new Shader(L"Basic");
-	basicShader->Create(m_deviceResources.get());
+	basicShader.Create(m_deviceResources.get());
 
-	mProjection = Matrix::CreatePerspectiveFieldOfView(60 * XM_PI / 180.0f, (float)width / (float)height, 0.01f, 100.0f);
+	mProjection = Matrix::CreatePerspectiveFieldOfView(
+		60 * XM_PI / 180.0f,
+		(float)width / (float)height,
+		0.01f, 
+		100.0f
+	);
 
 	auto device = m_deviceResources->GetD3DDevice();
 
-	// MODEL AND CAMERA
-	
+	GenerateInputLayout<VertexLayout_PositionUV>(m_deviceResources.get(), &basicShader);
 
-	//// RECTANGLE
-	//std::vector<float> data = {
-	//	-0.5f, 0.5f, 0.0f,		1.0f, 0.0f, 0.0f, 
-	//	0.5f, 0.5f, 0.0f,		0.0f, 1.0f, 0.0f, 
-	//	0.5f, -0.5f, 0.0f,		0.0f, 0.0f, 1.0f, 
-	//	-0.5f, -0.5f, 0.0f,		1.0f, 0.0f, 1.0f 
-	//};
+	cube.Generate(m_deviceResources.get());
+	cbModel.Create(m_deviceResources.get());
+	cbCamera.Create(m_deviceResources.get());
 
-	//CUBE
-
-	/*std::vector<float> cube = {
-		-3.0f, 3.0f, -3.0f,
-		3.0f, 3.0f, -3.0f,
-		-3.0f, -3.0f, -3.0,
-		3.0f, -3.0f, -3.0f,
-		- 3.0f, 3.0f, 3.0f,
-		3.0f, 3.0f, 3.0f,
-		-3.0f, -3.0f, 3.0f,
-		3.0f, -3.0f, 3.0f
-	};*/
-
-	GenerateInputLayout<VertexLayout_PositionColor>(m_deviceResources.get(), basicShader);
-	
-	vertexBuffer.PushVertex({ {-3.0f, 3.0f, -3.0f}, {1.0f, 1.0f, 1.0f, 1.0f} });
-	vertexBuffer.PushVertex({ {3.0f, 3.0f, -3.0f}, {0.0f, 1.0f, 1.0f, 1.0f} });
-	vertexBuffer.PushVertex({ {-3.0f, -3.0f, -3.0}, {1.0f, 0.0f, 1.0f, 1.0f} });
-	vertexBuffer.PushVertex({ {3.0f, -3.0f, -3.0f}, {1.0f, 1.0f, 0.0f, 1.0f} });
-	vertexBuffer.PushVertex({ {-3.0f, 3.0f, 3.0}, {0.0f, 0.0f, 1.0f, 1.0f} });
-	vertexBuffer.PushVertex({ {3.0f, 3.0f, 3.0f}, {1.0f, 0.0f, 0.0f, 1.0f} });
-	vertexBuffer.PushVertex({ {-3.0f, -3.0f, 3.0f}, {0.0f, 1.0f, 0.0f, 1.0f} });
-	vertexBuffer.PushVertex({ {3.0f, -3.0f, 3.0f}, {0.0f, 0.0f, 0.0f, 1.0f} });
-	vertexBuffer.Create(m_deviceResources.get());
-
-	indexBuffer.PushTriangle(3, 1, 2);
-	indexBuffer.PushTriangle(2, 1, 0);
-	indexBuffer.PushTriangle(2, 0, 6);
-	indexBuffer.PushTriangle(6, 0, 4);
-	indexBuffer.PushTriangle(4, 5, 6);
-	indexBuffer.PushTriangle(6, 5, 7);
-	indexBuffer.PushTriangle(5, 1, 7);
-	indexBuffer.PushTriangle(7, 1, 3);
-	indexBuffer.PushTriangle(1, 5, 0);
-	indexBuffer.PushTriangle(0, 5, 4);
-	indexBuffer.PushTriangle(6, 7, 2);
-	indexBuffer.PushTriangle(2, 7, 3);
-	indexBuffer.Create(m_deviceResources.get());
-
-	cameraBuffer.Create(m_deviceResources.get());
-	modelBuffer.Create(m_deviceResources.get());
-
+	terrain.Create(m_deviceResources.get());
 }
 
 void Game::Tick() {
@@ -156,49 +111,46 @@ void Game::Render() {
 	auto depthStencil = m_deviceResources->GetDepthStencilView();
 	auto const viewport = m_deviceResources->GetScreenViewport();
 
-	context->ClearRenderTargetView(renderTarget, Colors::CornflowerBlue);
+	context->ClearRenderTargetView(renderTarget, ColorsLinear::CornflowerBlue);
 	context->ClearDepthStencilView(depthStencil, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 	context->RSSetViewports(1, &viewport);
 	context->OMSetRenderTargets(1, &renderTarget, depthStencil);
 	
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-	ApplyInputLayout<VertexLayout_PositionColor>(m_deviceResources.get());
-
-	basicShader->Apply(m_deviceResources.get());
-
-	modelBuffer.ApplyToVS(m_deviceResources.get());
-	cameraBuffer.ApplyToVS(m_deviceResources.get(), 1);
-
 	
+	ApplyInputLayout<VertexLayout_PositionUV>(m_deviceResources.get());
 
-	modelBuffer.data.mModel = Matrix::Identity;
-	cameraBuffer.data.mView = Matrix::CreateLookAt(
-		Vector3::Backward * 10,
+	basicShader.Apply(m_deviceResources.get());
+	terrain.Apply(m_deviceResources.get());
+
+	cbModel.ApplyToVS(m_deviceResources.get(), 0);
+	cbCamera.ApplyToVS(m_deviceResources.get(), 1);
+
+	cbCamera.data.mView = Matrix::CreateLookAt(
+		Vector3::Backward * 5,
 		Vector3::Zero,
 		Vector3::Up
 	).Transpose();
-	cameraBuffer.data.mProjection = mProjection.Transpose();
+	cbCamera.data.mProj = mProjection.Transpose();
+	cbCamera.UpdateBuffer(m_deviceResources.get());
+	Matrix model = Matrix::Identity;
+	model *= Matrix::CreateRotationZ(m_timer.GetTotalSeconds() * XM_PI / 180.0f * 45);
+	model *= Matrix::CreateRotationY(m_timer.GetTotalSeconds() * XM_PI / 180.0f * 45);
+	model *= Matrix::CreateRotationY(m_timer.GetTotalSeconds() * XM_PI / 180.0f * 45);
+	/*model *= Matrix::CreateTranslation(
+		cos(m_timer.GetTotalSeconds()),
+		sin(m_timer.GetTotalSeconds()),
+		0);*/
 
-	cameraBuffer.UpdateBuffer(m_deviceResources.get());
+	cbModel.data.mModel = model.Transpose();
+	cbModel.UpdateBuffer(m_deviceResources.get());
 
-		Matrix model = Matrix::Identity;
-		 Matrix::CreateScale(0.3f);
-		model *= Matrix::CreateRotationZ(m_timer.GetTotalSeconds() * XM_PI / 180.0f * 45);
-		model *= Matrix::CreateRotationX(m_timer.GetTotalSeconds() * XM_PI / 180.0f * 60);
-		model *= Matrix::CreateRotationY(m_timer.GetTotalSeconds() * XM_PI / 180.0f * 90);
-
-		modelBuffer.data.mModel = model.Transpose();
-		modelBuffer.UpdateBuffer(m_deviceResources.get());
-
-		vertexBuffer.Apply(m_deviceResources.get());
-		indexBuffer.Apply(m_deviceResources.get());
-		context->DrawIndexed(36, 0, 0);
-		//context->Draw(36, 0);
+	cube.Draw(m_deviceResources.get());
 
 	// envoie nos commandes au GPU pour etre afficher � l'�cran
 	m_deviceResources->Present();
 }
+
 
 #pragma region Message Handlers
 void Game::OnActivated() {}
@@ -221,11 +173,15 @@ void Game::OnDisplayChange() {
 }
 
 void Game::OnWindowSizeChanged(int width, int height) {
-
 	if (!m_deviceResources->WindowSizeChanged(width, height))
 		return;
-	mProjection = Matrix::CreatePerspectiveFieldOfView(60 * XM_PI / 180.0f, (float)width / (float)height, 0.01f, 100.0f);
 
+	mProjection = Matrix::CreatePerspectiveFieldOfView(
+		60 * XM_PI / 180.0f,
+		(float)width / (float)height,
+		0.01f,
+		100.0f
+	);
 	// The windows size has changed:
 	// We can realloc here any resources that depends on the target resolution (post processing etc)
 }

@@ -119,6 +119,15 @@ public:
 		);
 	}
 
+	void ApplyToPS(DeviceResources* deviceRes, int slot = 0)
+	{
+
+		ID3D11Buffer* cbs[] = { constantbuffer.Get() };
+		deviceRes->GetD3DDeviceContext()->PSSetConstantBuffers(
+			slot, 1, cbs
+		);
+	}
+
 private:
 	Microsoft::WRL::ComPtr<ID3D11Buffer> constantbuffer;
 };
