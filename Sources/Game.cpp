@@ -127,25 +127,29 @@ void Game::Render() {
 	cbCamera.ApplyToVS(m_deviceResources.get(), 1);
 
 	cbCamera.data.mView = Matrix::CreateLookAt(
-		Vector3::Backward * 5,
+		Vector3(0,0.5,-1) * 20,
 		Vector3::Zero,
 		Vector3::Up
 	).Transpose();
 	cbCamera.data.mProj = mProjection.Transpose();
 	cbCamera.UpdateBuffer(m_deviceResources.get());
-	Matrix model = Matrix::Identity;
-	model *= Matrix::CreateRotationZ(m_timer.GetTotalSeconds() * XM_PI / 180.0f * 45);
-	model *= Matrix::CreateRotationY(m_timer.GetTotalSeconds() * XM_PI / 180.0f * 45);
-	model *= Matrix::CreateRotationY(m_timer.GetTotalSeconds() * XM_PI / 180.0f * 45);
-	/*model *= Matrix::CreateTranslation(
-		cos(m_timer.GetTotalSeconds()),
-		sin(m_timer.GetTotalSeconds()),
-		0);*/
 
-	cbModel.data.mModel = model.Transpose();
-	cbModel.UpdateBuffer(m_deviceResources.get());
+	for (int i = -10; i < 10; ++i)
+	{
+		for (int j = -10; j < 10; ++j)
+		{
+			Matrix model = Matrix::Identity;
+			model *= Matrix::CreateTranslation(
+				i, i*j, -j
+			);
 
-	cube.Draw(m_deviceResources.get());
+			cbModel.data.mModel = model.Transpose();
+			cbModel.UpdateBuffer(m_deviceResources.get());
+			
+			cube.Draw(m_deviceResources.get());
+		}
+		
+	}
 
 	// envoie nos commandes au GPU pour etre afficher � l'�cran
 	m_deviceResources->Present();

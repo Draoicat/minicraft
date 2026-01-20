@@ -22,7 +22,7 @@ private:
 
 	DirectX::SimpleMath::Vector3 position;
 	
-	void PushFace(Vector3 pos, Vector3 up, Vector3 right);
+	void PushFace(Vector3 pos, Vector3 up, Vector3 right, Vector2 texPos);
 };
 
 

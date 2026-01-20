@@ -9,7 +9,7 @@ SamplerState samplerState : register(s0);
 
 float4 main(Input input) : SV_TARGET
 {
-    return tex.Sample(samplerState, ((input.uv) / 16)  );
+    return tex.Sample(samplerState, ((input.uv) )  );
 }
 
 // return float4(input.uv, 1, 1);
