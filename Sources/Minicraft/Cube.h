@@ -17,12 +17,12 @@ public:
 	DirectX::SimpleMath::Matrix GetModelMatrix();
 
 private:
-	VertexBuffer<VertexLayout_PositionUV> vertexBuffer;
+	VertexBuffer<VertexLayout_PositionNormalUV> vertexBuffer;
 	IndexBuffer indexBuffer;
 
 	DirectX::SimpleMath::Vector3 position;
 	
-	void PushFace(Vector3 pos, Vector3 up, Vector3 right, Vector2 texPos);
+	void PushFace(Vector3 pos, Vector3 up, Vector3 right,Vector3 norm, Vector2 texPos);
 };
 
 

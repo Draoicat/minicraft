@@ -31,11 +31,18 @@ struct CameraData {
 	Matrix mView;
 	Matrix mProj;
 };
+struct LightData
+{
+	Vector4 lightPos;
+	Vector4 lightColor;
+};
 
 Matrix mProjection;
 ConstantBuffer<ModelData> cbModel;
 ConstantBuffer<CameraData> cbCamera;
+ConstantBuffer<LightData> cbLight;
 Cube cube(0, 0, 0);
+
 
 // Game
 Game::Game() noexcept(false) {
@@ -70,11 +77,13 @@ void Game::Initialize(HWND window, int width, int height) {
 
 	auto device = m_deviceResources->GetD3DDevice();
 
-	GenerateInputLayout<VertexLayout_PositionUV>(m_deviceResources.get(), &basicShader);
+	GenerateInputLayout<VertexLayout_PositionNormalUV>(m_deviceResources.get(), &basicShader);
 
 	cube.Generate(m_deviceResources.get());
+
 	cbModel.Create(m_deviceResources.get());
 	cbCamera.Create(m_deviceResources.get());
+	cbLight.Create(m_deviceResources.get());
 
 	terrain.Create(m_deviceResources.get());
 }
@@ -118,21 +127,34 @@ void Game::Render() {
 	
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	
-	ApplyInputLayout<VertexLayout_PositionUV>(m_deviceResources.get());
+	ApplyInputLayout<VertexLayout_PositionNormalUV>(m_deviceResources.get());
 
 	basicShader.Apply(m_deviceResources.get());
 	terrain.Apply(m_deviceResources.get());
 
 	cbModel.ApplyToVS(m_deviceResources.get(), 0);
 	cbCamera.ApplyToVS(m_deviceResources.get(), 1);
+	cbLight.ApplyToPS(m_deviceResources.get(), 0);
 
 	cbCamera.data.mView = Matrix::CreateLookAt(
-		Vector3(0,0.5,-1) * 20,
+		Vector3(cos(m_timer.GetTotalSeconds() * XM_PI / 180 * 30),0.5,-1) * 20,
 		Vector3::Zero,
 		Vector3::Up
 	).Transpose();
 	cbCamera.data.mProj = mProjection.Transpose();
 	cbCamera.UpdateBuffer(m_deviceResources.get());
+
+
+	Vector4 lightPos{ 
+		cos((float) m_timer.GetTotalSeconds() * XM_PI / 180.0f * 200) * 100.0f, 
+		50, 
+	(float)sin(m_timer.GetTotalSeconds() * XM_PI / 180.0f * 200) * 100.0f, 
+		1 };
+
+	Vector4 lightColor{ 1,1,1, 1};
+	cbLight.data.lightColor = lightColor;
+	cbLight.data.lightPos = lightPos;
+	cbLight.UpdateBuffer(m_deviceResources.get());
 
 	for (int i = -10; i < 10; ++i)
 	{
@@ -140,7 +162,7 @@ void Game::Render() {
 		{
 			Matrix model = Matrix::Identity;
 			model *= Matrix::CreateTranslation(
-				i, i*j, -j
+				i, 0, -j
 			);
 
 			cbModel.data.mModel = model.Transpose();
@@ -148,7 +170,6 @@ void Game::Render() {
 			
 			cube.Draw(m_deviceResources.get());
 		}
-		
 	}
 
 	// envoie nos commandes au GPU pour etre afficher � l'�cran
