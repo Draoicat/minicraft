@@ -15,14 +15,16 @@ public:
 	void Create(DeviceResources* deviceRes);
 	void UpdateAspectRatio(float aspectRatio);
 
+	Vector3 getPosition() { return position; }
+	Quaternion getRotation() { return rotation; };
 	void setPosition(Vector3 pos);
 	void setRotation(Quaternion rot);
 	DirectX::SimpleMath::Matrix GetInverseViewMatrix();
 
 	void ApplyCamera(DeviceResources* deviceRes);
-	Vector3 Forward();
-	void Right();
-	void Up();
+	Vector3 Camera::Forward() {return Vector3::TransformNormal(Vector3::Forward, view.Invert());}
+	Vector3 Right() { return Vector3::TransformNormal(Vector3::Right, view.Invert()); }
+	Vector3 Up() { return Vector3::TransformNormal(Vector3::Up, view.Invert()); }
 
 private:
 	float fov{ 60.0f };

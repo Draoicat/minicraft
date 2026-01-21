@@ -61,7 +61,7 @@ void Game::Initialize(HWND window, int width, int height) {
 	m_keyboard = std::make_unique<Keyboard>();
 	m_mouse = std::make_unique<Mouse>();
 	m_mouse->SetWindow(window);
-
+	m_mouse->SetMode(Mouse::MODE_RELATIVE);
 
 	// Initialize the Direct3D resources
 	m_deviceResources->SetWindow(window, width, height);
@@ -101,9 +101,42 @@ void Game::Update(DX::StepTimer const& timer) {
 	auto const ms = m_mouse->GetState();
 	
 	// add kb/mouse interact here
+	// SetPoisition par rapport à WASD en prenant en compte direction
+	// SetRotation par rapport à la souris
+
 	
 	if (kb.Escape)
 		ExitGame();
+	if (kb.Z)
+	{
+		camera.setPosition(camera.getPosition() += camera.Forward() * 0.1);
+	}
+	if (kb.Q)
+	{
+		camera.setPosition(camera.getPosition() -= camera.Right() * 0.1);
+	}
+	if (kb.S)
+	{
+		camera.setPosition(camera.getPosition() -= camera.Forward() * 0.1);
+	}
+	if (kb.D)
+	{
+		camera.setPosition(camera.getPosition() += camera.Right() * 0.1);
+	}
+	if (kb.Space)
+	{
+		camera.setPosition(camera.getPosition() += camera.Up() * 0.1);
+	}
+	if (kb.LeftShift)
+	{
+		camera.setPosition(camera.getPosition() -= camera.Up() * 0.1);
+	}
+
+	Quaternion rotation = camera.getRotation();
+	rotation *= Quaternion::CreateFromAxisAngle(camera.Right(), -ms.y * 0.01);
+	rotation *= Quaternion::CreateFromAxisAngle(Vector3::Up, -ms.x * 0.01);
+	camera.setRotation(rotation);
+
 
 	auto const pad = m_gamePad->GetState(0);
 }

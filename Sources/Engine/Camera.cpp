@@ -49,19 +49,6 @@ void Camera::ApplyCamera(DeviceResources* deviceRes)
 	cbCamera.UpdateBuffer(deviceRes);
 }
 
-Vector3 Camera::Forward()
-{
-	return Vector3::Forward;
-}
-
-void Camera::Right()
-{
-}
-
-void Camera::Up()
-{
-}
-
 void Camera::UpdateViewMatrix()
 {
 	Vector3 forward = Vector3::Transform(Vector3::Forward, rotation);
