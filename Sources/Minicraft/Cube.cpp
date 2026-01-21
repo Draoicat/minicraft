@@ -1,19 +1,19 @@
 #include "pch.h"
 #include "Cube.h"
 
-Cube::Cube(float x, float y, float z)
+Cube::Cube(float x, float y, float z, BlockId data) : blockData{BlockData::Get(data)}
 {
 	position = Vector3( x,y,z );
 }
 
 void Cube::Generate(DeviceResources* deviceRes)
 {
-	PushFace(Vector3::Zero, Vector3::Up, Vector3::Right, Vector3::Backward, 3);
-	PushFace(Vector3::Right, Vector3::Up, Vector3::Forward, Vector3::Right, 3);
-	PushFace(Vector3::Forward + Vector3::Right, Vector3::Up, Vector3::Left, Vector3::Forward, 3);
-	PushFace(Vector3::Forward, Vector3::Up, Vector3::Backward, Vector3::Left, 3);
-	PushFace(Vector3::Up, Vector3::Forward, Vector3::Right, Vector3::Up, 0);
-	PushFace(Vector3::Zero, Vector3::Right, Vector3::Forward, Vector3::Down, 2);
+	PushFace(Vector3::Zero, Vector3::Up, Vector3::Right, Vector3::Backward, blockData.texIdSide);
+	PushFace(Vector3::Right, Vector3::Up, Vector3::Forward, Vector3::Right, blockData.texIdSide);
+	PushFace(Vector3::Forward + Vector3::Right, Vector3::Up, Vector3::Left, Vector3::Forward, blockData.texIdSide);
+	PushFace(Vector3::Forward, Vector3::Up, Vector3::Backward, Vector3::Left, blockData.texIdSide);
+	PushFace(Vector3::Up, Vector3::Forward, Vector3::Right, Vector3::Up, blockData.texIdTop);
+	PushFace(Vector3::Zero, Vector3::Right, Vector3::Forward, Vector3::Down, blockData.texIdBottom);
 
 	vertexBuffer.Create(deviceRes);
 	indexBuffer.Create(deviceRes);

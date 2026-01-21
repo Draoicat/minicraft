@@ -34,7 +34,6 @@ ConstantBuffer<LightData> cbLight;
 
 Camera camera(60, 1.0f);
 
-Cube cube(0, 0, 0);
 World world;
 
 // Game
@@ -66,7 +65,6 @@ void Game::Initialize(HWND window, int width, int height) {
 
 	GenerateInputLayout<VertexLayout_PositionNormalUV>(m_deviceResources.get(), &basicShader);
 
-	cube.Generate(m_deviceResources.get());
 	world.Generate(m_deviceResources.get());
 
 	camera.Create(m_deviceResources.get());
@@ -146,7 +144,7 @@ void Game::Render() {
 
 	Vector4 lightPos{ 
 		cos((float) m_timer.GetTotalSeconds() * XM_PI / 180.0f * 200) * 100.0f, 
-		50, 
+		66, 
 		(float) sin(m_timer.GetTotalSeconds() * XM_PI / 180.0f * 200) * 100.0f, 
 		1
 	};
