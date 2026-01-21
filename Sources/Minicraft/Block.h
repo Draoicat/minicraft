@@ -1,4 +1,5 @@
-#pragma once
+#ifndef BLOCK_H
+#define BLOCK_H
 
 #define BLOCK_TEXSIZE 1.0f / 16.0f
 
@@ -98,3 +99,4 @@ public:
 
 	static const BlockData& Get(const BlockId id);
 };
+#endif BLOCK_H

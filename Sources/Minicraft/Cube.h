@@ -21,6 +21,8 @@ private:
 	IndexBuffer indexBuffer;
 
 	DirectX::SimpleMath::Vector3 position;
+
+
 	
 	void PushFace(Vector3 pos, Vector3 up, Vector3 right,Vector3 norm, int texId);
 };

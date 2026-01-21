@@ -38,3 +38,8 @@ void Cube::Draw(DeviceResources* deviceRes)
 	deviceRes->GetD3DDeviceContext()->DrawIndexed(36, 0, 0);
 }
 
+DirectX::SimpleMath::Matrix Cube::GetModelMatrix()
+{
+	return Matrix::CreateTranslation(position);
+}
+

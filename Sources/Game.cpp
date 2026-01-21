@@ -6,13 +6,12 @@
 #include "Game.h"
 
 #include "PerlinNoise.hpp"
-#include "Engine/Buffer.h"
 #include "Engine/VertexLayout.h"
+#include "Engine/Buffer.h"
 #include "Engine/Shader.h"
 #include "Engine/Texture.h"
-#include "Minicraft/Chunk.h"
-#include "Minicraft/Cube.h"
 #include "Engine/Camera.h"
+#include "Minicraft/World.h"
 
 extern void ExitGame() noexcept;
 
@@ -25,25 +24,18 @@ using Microsoft::WRL::ComPtr;
 Shader basicShader(L"basic");
 Texture terrain(L"terrain");
 
-struct ModelData 
-{
-	Matrix mModel;
-	Vector4 time;
-};
-
 struct LightData
 {
 	Vector4 lightPos;
 	Vector4 lightColor;
 };
 
-ConstantBuffer<ModelData> cbModel;
 ConstantBuffer<LightData> cbLight;
 
 Camera camera(60, 1.0f);
 
 Cube cube(0, 0, 0);
-Chunk chunk();
+World world;
 
 // Game
 Game::Game() noexcept(false) {
@@ -75,11 +67,10 @@ void Game::Initialize(HWND window, int width, int height) {
 	GenerateInputLayout<VertexLayout_PositionNormalUV>(m_deviceResources.get(), &basicShader);
 
 	cube.Generate(m_deviceResources.get());
-	//chunk().generate();
+	world.Generate(m_deviceResources.get());
 
 	camera.Create(m_deviceResources.get());
 	camera.UpdateAspectRatio((float) width / (float) height);
-	cbModel.Create(m_deviceResources.get());
 	cbLight.Create(m_deviceResources.get());
 
 	terrain.Create(m_deviceResources.get());
@@ -122,7 +113,6 @@ void Game::Update(DX::StepTimer const& timer) {
 	rotation *= Quaternion::CreateFromAxisAngle(Vector3::Up, -ms.x * 0.5f * dt);
 	camera.setRotation(rotation);
 
-
 	auto const pad = m_gamePad->GetState(0);
 }
 
@@ -149,10 +139,7 @@ void Game::Render() {
 	basicShader.Apply(m_deviceResources.get());
 	terrain.Apply(m_deviceResources.get());
 
-	cbModel.ApplyToVS(m_deviceResources.get(), 0);
-	
 	cbLight.ApplyToPS(m_deviceResources.get(), 0);
-
 
 	//cbCamera.data.mProj = mProjection.Transpose();
 	camera.ApplyCamera(m_deviceResources.get());
@@ -169,21 +156,7 @@ void Game::Render() {
 	cbLight.data.lightPos = lightPos;
 	cbLight.UpdateBuffer(m_deviceResources.get());
 
-	for (int i = -10; i < 10; ++i)
-	{
-		for (int j = -10; j < 10; ++j)
-		{
-			Matrix model = Matrix::Identity;
-			model *= Matrix::CreateTranslation(
-				i, 0, -j
-			);
-
-			cbModel.data.mModel = model.Transpose();
-			cbModel.UpdateBuffer(m_deviceResources.get());
-			
-			cube.Draw(m_deviceResources.get());
-		}
-	}
+	world.Draw(m_deviceResources.get());
 
 	// envoie nos commandes au GPU pour etre afficher � l'�cran
 	m_deviceResources->Present();
