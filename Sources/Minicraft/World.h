@@ -7,7 +7,7 @@
 class World
 {
 public:
-	int static constexpr CHUNK_SIZE{ 16 * 384 * 16 };
+	int static constexpr CHUNK_SIZE{ 16 * 16 * 16 };
 
 	World() = default;
 
