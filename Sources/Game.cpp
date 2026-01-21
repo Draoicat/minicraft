@@ -10,7 +10,9 @@
 #include "Engine/VertexLayout.h"
 #include "Engine/Shader.h"
 #include "Engine/Texture.h"
+#include "Minicraft/Chunk.h"
 #include "Minicraft/Cube.h"
+#include "Engine/Camera.h"
 
 extern void ExitGame() noexcept;
 
@@ -23,26 +25,25 @@ using Microsoft::WRL::ComPtr;
 Shader basicShader(L"basic");
 Texture terrain(L"terrain");
 
-struct ModelData {
+struct ModelData 
+{
 	Matrix mModel;
 	Vector4 time;
 };
-struct CameraData {
-	Matrix mView;
-	Matrix mProj;
-};
+
 struct LightData
 {
 	Vector4 lightPos;
 	Vector4 lightColor;
 };
 
-Matrix mProjection;
 ConstantBuffer<ModelData> cbModel;
-ConstantBuffer<CameraData> cbCamera;
 ConstantBuffer<LightData> cbLight;
-Cube cube(0, 0, 0);
 
+Camera camera(60, 1.0f);
+
+Cube cube(0, 0, 0);
+Chunk chunk();
 
 // Game
 Game::Game() noexcept(false) {
@@ -61,6 +62,7 @@ void Game::Initialize(HWND window, int width, int height) {
 	m_mouse = std::make_unique<Mouse>();
 	m_mouse->SetWindow(window);
 
+
 	// Initialize the Direct3D resources
 	m_deviceResources->SetWindow(window, width, height);
 	m_deviceResources->CreateDeviceResources();
@@ -68,24 +70,21 @@ void Game::Initialize(HWND window, int width, int height) {
 
 	basicShader.Create(m_deviceResources.get());
 
-	mProjection = Matrix::CreatePerspectiveFieldOfView(
-		60 * XM_PI / 180.0f,
-		(float)width / (float)height,
-		0.01f, 
-		100.0f
-	);
-
 	auto device = m_deviceResources->GetD3DDevice();
 
 	GenerateInputLayout<VertexLayout_PositionNormalUV>(m_deviceResources.get(), &basicShader);
 
 	cube.Generate(m_deviceResources.get());
+	//chunk().generate();
 
+	camera.Create(m_deviceResources.get());
+	camera.UpdateAspectRatio((float) width / (float) height);
 	cbModel.Create(m_deviceResources.get());
-	cbCamera.Create(m_deviceResources.get());
 	cbLight.Create(m_deviceResources.get());
 
 	terrain.Create(m_deviceResources.get());
+
+
 }
 
 void Game::Tick() {
@@ -133,23 +132,19 @@ void Game::Render() {
 	terrain.Apply(m_deviceResources.get());
 
 	cbModel.ApplyToVS(m_deviceResources.get(), 0);
-	cbCamera.ApplyToVS(m_deviceResources.get(), 1);
+	
 	cbLight.ApplyToPS(m_deviceResources.get(), 0);
 
-	cbCamera.data.mView = Matrix::CreateLookAt(
-		Vector3(cos(m_timer.GetTotalSeconds() * XM_PI / 180 * 30),0.5,-1) * 20,
-		Vector3::Zero,
-		Vector3::Up
-	).Transpose();
-	cbCamera.data.mProj = mProjection.Transpose();
-	cbCamera.UpdateBuffer(m_deviceResources.get());
 
+	//cbCamera.data.mProj = mProjection.Transpose();
+	camera.ApplyCamera(m_deviceResources.get());
 
 	Vector4 lightPos{ 
 		cos((float) m_timer.GetTotalSeconds() * XM_PI / 180.0f * 200) * 100.0f, 
 		50, 
-	(float)sin(m_timer.GetTotalSeconds() * XM_PI / 180.0f * 200) * 100.0f, 
-		1 };
+		(float) sin(m_timer.GetTotalSeconds() * XM_PI / 180.0f * 200) * 100.0f, 
+		1
+	};
 
 	Vector4 lightColor{ 1,1,1, 1};
 	cbLight.data.lightColor = lightColor;
@@ -201,12 +196,7 @@ void Game::OnWindowSizeChanged(int width, int height) {
 	if (!m_deviceResources->WindowSizeChanged(width, height))
 		return;
 
-	mProjection = Matrix::CreatePerspectiveFieldOfView(
-		60 * XM_PI / 180.0f,
-		(float)width / (float)height,
-		0.01f,
-		100.0f
-	);
+	camera.UpdateAspectRatio((float) width / (float) height);
 	// The windows size has changed:
 	// We can realloc here any resources that depends on the target resolution (post processing etc)
 }

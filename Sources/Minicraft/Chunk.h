@@ -1,8 +1,6 @@
 #ifndef CHUNK_H
 #define CHUNK_H
 
-#include "Minicraft/Cube.h"
-
 class Chunk
 {
 public:
@@ -14,7 +12,7 @@ public:
 	void generate();
 
 private:
-	std::vector<Vector3> cubes;
+	std::vector<DirectX::SimpleMath::Vector3> cubes;
 
 };
 
