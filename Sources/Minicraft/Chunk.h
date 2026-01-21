@@ -11,7 +11,7 @@ class Chunk
 {
 public:
 	int static constexpr CHUNK_SIZE{ 16 };
-	int static constexpr CHINK_HEIGHT{ 25 };
+	int static constexpr CHINK_HEIGHT{ 16 };
 
 	Chunk(float x, float y, float z);
 

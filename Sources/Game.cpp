@@ -7,7 +7,6 @@
 
 #include "PerlinNoise.hpp"
 #include "Engine/VertexLayout.h"
-#include "Engine/Buffer.h"
 #include "Engine/Shader.h"
 #include "Engine/Texture.h"
 #include "Engine/Camera.h"
@@ -23,14 +22,6 @@ using Microsoft::WRL::ComPtr;
 // Global stuff
 Shader basicShader(L"basic");
 Texture terrain(L"terrain");
-
-struct LightData
-{
-	Vector4 lightPos;
-	Vector4 lightColor;
-};
-
-ConstantBuffer<LightData> cbLight;
 
 Camera camera(60, 1.0f);
 
@@ -66,14 +57,9 @@ void Game::Initialize(HWND window, int width, int height) {
 	GenerateInputLayout<VertexLayout_PositionNormalUV>(m_deviceResources.get(), &basicShader);
 
 	world.Generate(m_deviceResources.get());
-
 	camera.Create(m_deviceResources.get());
 	camera.UpdateAspectRatio((float) width / (float) height);
-	cbLight.Create(m_deviceResources.get());
-
 	terrain.Create(m_deviceResources.get());
-
-
 }
 
 void Game::Tick() {
@@ -137,22 +123,9 @@ void Game::Render() {
 	basicShader.Apply(m_deviceResources.get());
 	terrain.Apply(m_deviceResources.get());
 
-	cbLight.ApplyToPS(m_deviceResources.get(), 0);
 
 	//cbCamera.data.mProj = mProjection.Transpose();
 	camera.ApplyCamera(m_deviceResources.get());
-
-	Vector4 lightPos{ 
-		cos((float) m_timer.GetTotalSeconds() * XM_PI / 180.0f * 200) * 100.0f, 
-		66, 
-		(float) sin(m_timer.GetTotalSeconds() * XM_PI / 180.0f * 200) * 100.0f, 
-		1
-	};
-
-	Vector4 lightColor{ 1,1,1, 1};
-	cbLight.data.lightColor = lightColor;
-	cbLight.data.lightPos = lightPos;
-	cbLight.UpdateBuffer(m_deviceResources.get());
 
 	world.Draw(m_deviceResources.get());
 
