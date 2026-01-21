@@ -104,37 +104,22 @@ void Game::Update(DX::StepTimer const& timer) {
 	// SetPoisition par rapport à WASD en prenant en compte direction
 	// SetRotation par rapport à la souris
 
+	Vector3 moveDelta = Vector3::Zero;
+	float dt = timer.GetElapsedSeconds();
 	
-	if (kb.Escape)
-		ExitGame();
-	if (kb.Z)
-	{
-		camera.setPosition(camera.getPosition() += camera.Forward() * 0.1);
-	}
-	if (kb.Q)
-	{
-		camera.setPosition(camera.getPosition() -= camera.Right() * 0.1);
-	}
-	if (kb.S)
-	{
-		camera.setPosition(camera.getPosition() -= camera.Forward() * 0.1);
-	}
-	if (kb.D)
-	{
-		camera.setPosition(camera.getPosition() += camera.Right() * 0.1);
-	}
-	if (kb.Space)
-	{
-		camera.setPosition(camera.getPosition() += camera.Up() * 0.1);
-	}
-	if (kb.LeftShift)
-	{
-		camera.setPosition(camera.getPosition() -= camera.Up() * 0.1);
-	}
+	if (kb.Escape) ExitGame();
+
+	if (kb.Z) moveDelta += camera.Forward();
+	if (kb.Q) moveDelta -= camera.Right();
+	if (kb.S) moveDelta -= camera.Forward();
+	if (kb.D) moveDelta += camera.Right();
+	if (kb.Space) moveDelta += camera.Up();
+	if (kb.LeftShift) moveDelta -= camera.Up();
+	camera.setPosition(camera.getPosition() += moveDelta * 6.0f * dt);
 
 	Quaternion rotation = camera.getRotation();
-	rotation *= Quaternion::CreateFromAxisAngle(camera.Right(), -ms.y * 0.01);
-	rotation *= Quaternion::CreateFromAxisAngle(Vector3::Up, -ms.x * 0.01);
+	rotation *= Quaternion::CreateFromAxisAngle(camera.Right(), -ms.y * 0.5f * dt);
+	rotation *= Quaternion::CreateFromAxisAngle(Vector3::Up, -ms.x * 0.5f * dt);
 	camera.setRotation(rotation);
 
 
