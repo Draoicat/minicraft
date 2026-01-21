@@ -3,6 +3,7 @@
 
 #include "Cube.h"
 #include "Block.h"
+#include "Chunk.h"
 
 class World
 {
@@ -14,7 +15,7 @@ public:
 	void Generate(DeviceResources* deviceRes);
 	void Draw(DeviceResources* device);
 
-	BlockId* GetCube(int globalX, int globalY, int globalZ);
+	//BlockId* GetCube(int globalX, int globalY, int globalZ);
 
 private:
 	struct ModelData
@@ -25,8 +26,7 @@ private:
 
 	ConstantBuffer<ModelData> cbModel;
 
-	BlockId data[CHUNK_SIZE];
-	std::vector<Cube> cubes;
+	std::vector<Chunk> chunks;
 };
 
 #endif
