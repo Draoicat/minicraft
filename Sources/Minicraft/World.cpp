@@ -4,11 +4,11 @@
 void World::Generate(DeviceResources* deviceRes)
 {
 	
-	for (int i = 0; i < 8; ++i)
+	for (int i = 0; i <10; ++i)
 	{
 		for (int j = 0; j < 1; ++j)
 		{
-			for (int k = 0; k < 8; ++k)
+			for (int k = 0; k < 10; ++k)
 			{
 				chunks.emplace_back(i * Chunk::CHUNK_SIZE, j * Chunk::CHINK_HEIGHT, k * Chunk::CHUNK_SIZE).Generate(deviceRes);
 			}

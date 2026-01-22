@@ -43,7 +43,6 @@ void Chunk::Generate(DeviceResources* deviceRes)
 
 	vertexBuffer.Create(deviceRes);
 	indexBuffer.Create(deviceRes);
-
 }
 
 void Chunk::Draw(DeviceResources* deviceRes)
@@ -68,6 +67,7 @@ void Chunk::PushFace(Vector3 pos, Vector3 up, Vector3 right, Vector3 norm, int t
 {
 	Vector2 uv(texId % 16, texId / 16);
 	pos -= {0.5, 0.5, -0.5};
+	if (!ShouldRenderFace(pos.x, pos.y, pos.z, norm.x, norm.y, norm.z )) return;
 	int vertexLeftBottom = vertexBuffer.PushVertex({ pos,norm ,(uv + Vector2::UnitY) / 16 });
 	int vertexLeftTop = vertexBuffer.PushVertex({ {pos + up},norm ,(uv + Vector2::Zero) / 16 });
 	int vertexRightTop = vertexBuffer.PushVertex({ {pos + up + right},norm ,(uv + Vector2::UnitX) / 16 });
@@ -78,7 +78,7 @@ void Chunk::PushFace(Vector3 pos, Vector3 up, Vector3 right, Vector3 norm, int t
 
 void Chunk::PushCube(int x, int y, int z)
 {
-	Vector3 pos{ (float)x, (float)y, (float) z };
+	Vector3 pos{ (float) x, (float) y, (float) z };
 	BlockId* id = GetCubeLocal(x, y, z);
 	if (*id == EMPTY) return;
 	BlockData data = BlockData::Get(*id);
@@ -90,8 +90,13 @@ void Chunk::PushCube(int x, int y, int z)
 	PushFace(Vector3::Zero + pos, Vector3::Right, Vector3::Forward, Vector3::Down, data.texIdBottom);
 }
 
+bool Chunk::ShouldRenderFace(int x, int y, int z, int dx, int dy, int dz)
+{
+	BlockId* id = GetCubeLocal(x + dx, y + dy, z + dz);
+	return id == nullptr || *id == EMPTY;
+}
+
 DirectX::SimpleMath::Matrix Chunk::GetModelMatrix()
 {
 	return Matrix::CreateTranslation(position);
 }
-
