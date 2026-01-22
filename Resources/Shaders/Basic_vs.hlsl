@@ -31,10 +31,5 @@ Output main(Input input) {
     output.pos = mul(output.pos, Projection);
 
     output.norm = input.norm;
-
-    //output.norm = mul(output.norm, Model);
-    //output.norm = mul(output.norm, View);
-    //output.norm = mul(output.norm, Projection);
-    
 	return output;
 }

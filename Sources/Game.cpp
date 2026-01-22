@@ -57,6 +57,7 @@ void Game::Initialize(HWND window, int width, int height) {
 	GenerateInputLayout<VertexLayout_PositionNormalUV>(m_deviceResources.get(), &basicShader);
 
 	world.Generate(m_deviceResources.get());
+
 	camera.Create(m_deviceResources.get());
 	camera.UpdateAspectRatio((float) width / (float) height);
 	terrain.Create(m_deviceResources.get());
@@ -122,7 +123,6 @@ void Game::Render() {
 
 	basicShader.Apply(m_deviceResources.get());
 	terrain.Apply(m_deviceResources.get());
-
 
 	//cbCamera.data.mProj = mProjection.Transpose();
 	camera.ApplyCamera(m_deviceResources.get());
