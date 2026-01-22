@@ -11,7 +11,7 @@ float perlinHeightStone = 14.0f;
 float perlinScaleDirt = 0.07f;
 int perlinOctaveDirt = 2;
 float perlinHeightDirt = 8.0f;
-float waterHeight = 14.0f;
+float waterHeight = 11.0f;
 
 void World::Generate(DeviceResources* res) {
 	siv::BasicPerlinNoise<float> perlin;
@@ -42,12 +42,12 @@ void World::Generate(DeviceResources* res) {
 				SetCube(x, yDirt, z, GRASS);
 			}
 
-			for (int y = 0; y < GLOBAL_SIZE; y++) {
+			/*for (int y = 0; y < GLOBAL_SIZE; y++) {
 				float test = perlin.octave3D_01(x / (float)GLOBAL_SIZE * 0.8f, y / (float)GLOBAL_SIZE * 0.8f, z / (float)GLOBAL_SIZE * 0.8f, 5);
 				if (test >  0.3f && test < 0.6f) {
 					SetCube(x, y, z, EMPTY);
 				}
-			}
+			}*/
 		}
 	}
 

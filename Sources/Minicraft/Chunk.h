@@ -30,5 +30,5 @@ public:
 private:
 	bool ShouldRenderFace(int cx, int cy, int cz, int dx, int dy, int dz);
 	void PushCube(int cx, int cy, int cz);
-	void PushFace(Vector3 pos, Vector3 up, Vector3 right, int texId);
+	void PushFace(Vector3 pos, Vector3 up, Vector3 right, int texId, ShaderPass pass);
 };

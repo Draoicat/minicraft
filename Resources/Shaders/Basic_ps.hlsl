@@ -7,5 +7,7 @@ Texture2D tex : register(t0); // t0 représente le slot 0 de
 SamplerState samplerState : register(s0);
 
 float4 main(Input input) : SV_TARGET {
-    return tex.Sample(samplerState, input.uv);
+    float4 res = tex.Sample(samplerState, input.uv);
+    
+    return res;
 }

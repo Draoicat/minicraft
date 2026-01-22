@@ -61,11 +61,12 @@ void Game::Initialize(HWND window, int width, int height) {
 
 	auto device = m_deviceResources->GetD3DDevice();
 
+	m_commonStates = std::make_unique<CommonStates>(device);
+
 	GenerateInputLayout<VertexLayout_PositionUV>(m_deviceResources.get(), &basicShader);
 
 	world.Generate(m_deviceResources.get());
 	terrain.Create(m_deviceResources.get());
-
 
 	// Setup Dear ImGui context
 	IMGUI_CHECKVERSION();
@@ -157,8 +158,9 @@ void Game::Render() {
 	terrain.Apply(m_deviceResources.get());
 	camera.Apply(m_deviceResources.get());
 
+	context->OMSetBlendState(m_commonStates->Opaque(), NULL, 0xffffffff);
 	world.Draw(m_deviceResources.get(), ShaderPass::SP_OPAQUE);
-	// OMSetBlendState
+	context->OMSetBlendState(m_commonStates->AlphaBlend(), NULL, 0xffffffff);
 	world.Draw(m_deviceResources.get(), ShaderPass::SP_TRANSPARENT);
 
 	ImGui::Render();
