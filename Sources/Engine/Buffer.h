@@ -12,6 +12,10 @@ public:
 		return data.size() - 1;
 	}
 
+	void Clear() {
+		data.clear();
+	}
+
 	void Create(DeviceResources* deviceRes) {
 		if (data.empty()) return;
 		CD3D11_BUFFER_DESC desc(
@@ -44,6 +48,10 @@ public:
 		data.push_back(a);
 		data.push_back(b);
 		data.push_back(c);
+	}
+
+	void Clear() {
+		data.clear();
 	}
 
 	uint32_t Size() {
