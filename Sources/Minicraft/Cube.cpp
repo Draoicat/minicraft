@@ -1,45 +1,38 @@
 #include "pch.h"
+
 #include "Cube.h"
 
-Cube::Cube(float x, float y, float z, BlockId data) : blockData{BlockData::Get(data)}
-{
-	position = Vector3( x,y,z );
+Cube::Cube(Vector3 pos, BlockId id) : mModel(Matrix::CreateTranslation(pos)), id(id) {
 }
 
-void Cube::Generate(DeviceResources* deviceRes)
-{
-	PushFace(Vector3::Zero, Vector3::Up, Vector3::Right, Vector3::Backward, blockData.texIdSide);
-	PushFace(Vector3::Right, Vector3::Up, Vector3::Forward, Vector3::Right, blockData.texIdSide);
-	PushFace(Vector3::Forward + Vector3::Right, Vector3::Up, Vector3::Left, Vector3::Forward, blockData.texIdSide);
-	PushFace(Vector3::Forward, Vector3::Up, Vector3::Backward, Vector3::Left, blockData.texIdSide);
-	PushFace(Vector3::Up, Vector3::Forward, Vector3::Right, Vector3::Up, blockData.texIdTop);
-	PushFace(Vector3::Zero, Vector3::Right, Vector3::Forward, Vector3::Down, blockData.texIdBottom);
+void Cube::Generate(DeviceResources* deviceRes) {
+	auto& blockData = BlockData::Get(id);
 
-	vertexBuffer.Create(deviceRes);
-	indexBuffer.Create(deviceRes);
-}
- 
-void Cube::PushFace(Vector3 pos, Vector3 up, Vector3 right, Vector3 norm, int texId)
-{
-	Vector2 uv(texId % 16, texId / 16);
-	pos -= {0.5, 0.5, -0.5};
-	int vertexLeftBottom = vertexBuffer.PushVertex({ pos,norm ,(uv + Vector2::UnitY) / 16 });
-	int vertexLeftTop = vertexBuffer.PushVertex({ {pos + up},norm ,( uv + Vector2::Zero ) / 16} );
-	int vertexRightTop = vertexBuffer.PushVertex({ {pos + up + right},norm ,(uv + Vector2::UnitX) / 16 });
-	int vertexRightBottom = vertexBuffer.PushVertex({{pos + right},norm,  (uv + Vector2::One) / 16});
-	indexBuffer.PushTriangle(vertexLeftBottom, vertexLeftTop, vertexRightTop);
-	indexBuffer.PushTriangle(vertexRightTop, vertexRightBottom, vertexLeftBottom);
+	PushFace(Vector3::Zero, Vector3::Up, Vector3::Right, blockData.texIdSide);
+	PushFace(Vector3::Right, Vector3::Up, Vector3::Forward, blockData.texIdSide);
+	PushFace(Vector3::Right + Vector3::Forward, Vector3::Up, Vector3::Left, blockData.texIdSide);
+	PushFace(Vector3::Forward, Vector3::Up, Vector3::Backward, blockData.texIdSide);
+	PushFace(Vector3::Up, Vector3::Forward, Vector3::Right, blockData.texIdTop);
+	PushFace(Vector3::Right + Vector3::Forward, Vector3::Left, Vector3::Backward, blockData.texIdBottom);
+	vBuffer.Create(deviceRes);
+	iBuffer.Create(deviceRes);
 }
 
-void Cube::Draw(DeviceResources* deviceRes)
-{
-	vertexBuffer.Apply(deviceRes);
-	indexBuffer.Apply(deviceRes);
-	deviceRes->GetD3DDeviceContext()->DrawIndexed(36, 0, 0);
+void Cube::Draw(DeviceResources* deviceRes) {
+	vBuffer.Apply(deviceRes);
+	iBuffer.Apply(deviceRes);
+	deviceRes->GetD3DDeviceContext()->DrawIndexed(iBuffer.Size(), 0, 0);
 }
 
-DirectX::SimpleMath::Matrix Cube::GetModelMatrix()
-{
-	return Matrix::CreateTranslation(position);
+void Cube::PushFace(Vector3 pos, Vector3 up, Vector3 right, int texId) {
+	Vector2 uv(
+		texId % 16,
+		texId / 16
+	);
+	uint32_t bottomLeft = vBuffer.PushVertex(VertexLayout_PositionUV(pos, (uv + Vector2::UnitY) / 16.0f));
+	uint32_t bottomRight = vBuffer.PushVertex(VertexLayout_PositionUV(pos + right, (uv + Vector2::One) / 16.0f));
+	uint32_t upLeft = vBuffer.PushVertex(VertexLayout_PositionUV(pos + up, uv / 16.0f));
+	uint32_t upRight = vBuffer.PushVertex(VertexLayout_PositionUV(pos + up + right, (uv + Vector2::UnitX) / 16.0f));
+	iBuffer.PushTriangle(bottomLeft, upLeft, upRight);
+	iBuffer.PushTriangle(bottomLeft, upRight, bottomRight);
 }
-

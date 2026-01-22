@@ -6,10 +6,12 @@
 #include "Game.h"
 
 #include "PerlinNoise.hpp"
+#include "Engine/Buffer.h"
 #include "Engine/VertexLayout.h"
 #include "Engine/Shader.h"
 #include "Engine/Texture.h"
 #include "Engine/Camera.h"
+#include "Minicraft/Cube.h"
 #include "Minicraft/World.h"
 
 extern void ExitGame() noexcept;
@@ -22,9 +24,7 @@ using Microsoft::WRL::ComPtr;
 // Global stuff
 Shader basicShader(L"basic");
 Texture terrain(L"terrain");
-
-Camera camera(60, 1.0f);
-
+Camera camera(60, 1.0);
 World world;
 
 // Game
@@ -34,6 +34,10 @@ Game::Game() noexcept(false) {
 }
 
 Game::~Game() {
+	ImGui_ImplDX11_Shutdown();
+	ImGui_ImplWin32_Shutdown();
+	ImGui::DestroyContext();
+
 	g_inputLayouts.clear();
 }
 
@@ -52,18 +56,36 @@ void Game::Initialize(HWND window, int width, int height) {
 
 	basicShader.Create(m_deviceResources.get());
 
+	camera.UpdateAspectRatio((float)width / (float)height);
+	camera.Create(m_deviceResources.get());
+
 	auto device = m_deviceResources->GetD3DDevice();
 
-	GenerateInputLayout<VertexLayout_PositionNormalUV>(m_deviceResources.get(), &basicShader);
+	m_commonStates = std::make_unique<CommonStates>(device);
+
+	GenerateInputLayout<VertexLayout_PositionUV>(m_deviceResources.get(), &basicShader);
 
 	world.Generate(m_deviceResources.get());
-
-	camera.Create(m_deviceResources.get());
-	camera.UpdateAspectRatio((float) width / (float) height);
 	terrain.Create(m_deviceResources.get());
+
+	// Setup Dear ImGui context
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGuiIO& io = ImGui::GetIO();
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // IF using Docking Branch
+	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;         // IF using Docking Branch
+
+	ImGui_ImplWin32_Init(window);
+	ImGui_ImplDX11_Init(m_deviceResources->GetD3DDevice(), m_deviceResources->GetD3DDeviceContext());
 }
 
 void Game::Tick() {
+	ImGui_ImplDX11_NewFrame();
+	ImGui_ImplWin32_NewFrame();
+	ImGui::NewFrame();
+
 	// DX::StepTimer will compute the elapsed time and call Update() for us
 	// We pass Update as a callback to Tick() because StepTimer can be set to a "fixed time" step mode, allowing us to call Update multiple time in a row if the framerate is too low (useful for physics stuffs)
 	m_timer.Tick([&]() { Update(m_timer); });
@@ -71,32 +93,43 @@ void Game::Tick() {
 	Render();
 }
 
+bool imGuiMode = false;
+
 // Updates the world.
 void Game::Update(DX::StepTimer const& timer) {
 	auto const kb = m_keyboard->GetState();
 	auto const ms = m_mouse->GetState();
+
+	if (kb.P) imGuiMode = true;
+	if (kb.M) imGuiMode = false;
+
+	if (imGuiMode) {
+		m_mouse->SetMode(Mouse::MODE_ABSOLUTE);
+
+		world.ShowImGui(m_deviceResources.get());
+	} else {
+		m_mouse->SetMode(Mouse::MODE_RELATIVE);
+
+		double dt = timer.GetElapsedSeconds();
 	
-	// add kb/mouse interact here
-	// SetPoisition par rapport à WASD en prenant en compte direction
-	// SetRotation par rapport à la souris
-
-	Vector3 moveDelta = Vector3::Zero;
-	float dt = timer.GetElapsedSeconds();
+		Vector3 delta = Vector3::Zero;
+		if (kb.Z) delta += camera.Forward();
+		if (kb.S) delta -= camera.Forward();
+		if (kb.Q) delta -= camera.Right();
+		if (kb.D) delta += camera.Right();
+		if (kb.Space) delta += camera.Up();
+		if (kb.LeftShift) delta -= camera.Up();
+		//delta = Vector3::TransformNormal(delta, camera.GetInverseViewMatrix());
+		camera.SetPosition(camera.GetPosition() + delta * 10.0f * dt);
 	
-	if (kb.Escape) ExitGame();
-
-	if (kb.Z) moveDelta += camera.Forward();
-	if (kb.Q) moveDelta -= camera.Right();
-	if (kb.S) moveDelta -= camera.Forward();
-	if (kb.D) moveDelta += camera.Right();
-	if (kb.Space) moveDelta += camera.Up();
-	if (kb.LeftShift) moveDelta -= camera.Up();
-	camera.setPosition(camera.getPosition() += moveDelta * 6.0f * dt);
-
-	Quaternion rotation = camera.getRotation();
-	rotation *= Quaternion::CreateFromAxisAngle(camera.Right(), -ms.y * 0.5f * dt);
-	rotation *= Quaternion::CreateFromAxisAngle(Vector3::Up, -ms.x * 0.5f * dt);
-	camera.setRotation(rotation);
+		Quaternion rot = camera.GetRotation();
+		rot *= Quaternion::CreateFromAxisAngle(camera.Right(), -ms.y * dt * 0.2f);
+		rot *= Quaternion::CreateFromAxisAngle(Vector3::Up, -ms.x * dt * 0.2f);
+		camera.SetRotation(rot);
+	}
+	
+	if (kb.Escape)
+		ExitGame();
 
 	auto const pad = m_gamePad->GetState(0);
 }
@@ -119,15 +152,21 @@ void Game::Render() {
 	
 	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	
-	ApplyInputLayout<VertexLayout_PositionNormalUV>(m_deviceResources.get());
+	ApplyInputLayout<VertexLayout_PositionUV>(m_deviceResources.get());
 
 	basicShader.Apply(m_deviceResources.get());
 	terrain.Apply(m_deviceResources.get());
+	camera.Apply(m_deviceResources.get());
 
-	//cbCamera.data.mProj = mProjection.Transpose();
-	camera.ApplyCamera(m_deviceResources.get());
+	context->OMSetBlendState(m_commonStates->Opaque(), NULL, 0xffffffff);
+	world.Draw(m_deviceResources.get(), ShaderPass::SP_OPAQUE);
+	context->OMSetBlendState(m_commonStates->AlphaBlend(), NULL, 0xffffffff);
+	world.Draw(m_deviceResources.get(), ShaderPass::SP_TRANSPARENT);
 
-	world.Draw(m_deviceResources.get());
+	ImGui::Render();
+	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+	ImGui::UpdatePlatformWindows();
+	ImGui::RenderPlatformWindowsDefault();
 
 	// envoie nos commandes au GPU pour etre afficher � l'�cran
 	m_deviceResources->Present();
@@ -158,7 +197,7 @@ void Game::OnWindowSizeChanged(int width, int height) {
 	if (!m_deviceResources->WindowSizeChanged(width, height))
 		return;
 
-	camera.UpdateAspectRatio((float) width / (float) height);
+	camera.UpdateAspectRatio((float)width / (float)height);
 	// The windows size has changed:
 	// We can realloc here any resources that depends on the target resolution (post processing etc)
 }

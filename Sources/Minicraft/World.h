@@ -15,8 +15,10 @@ class World {
 	ConstantBuffer<CubeData> cbModel;
 public:
 	void Generate(DeviceResources* res);
-	void Draw(DeviceResources* res);
+	void Draw(DeviceResources* res, ShaderPass pass);
 
 	BlockId* GetCube(int gx, int gy, int gz);
 	void SetCube(int gx, int gy, int gz, BlockId id);
+
+	void ShowImGui(DeviceResources* res);
 };

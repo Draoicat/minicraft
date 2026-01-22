@@ -2,7 +2,6 @@
 
 #include "Engine/DeviceResources.h"
 #include "Engine/StepTimer.h"
-#include <wrl.h>
 
 // A basic game implementation that creates a D3D11 device and
 // provides a game loop.
@@ -47,5 +46,5 @@ private:
 	std::unique_ptr<DirectX::GamePad>       m_gamePad;
 	std::unique_ptr<DirectX::Keyboard>      m_keyboard;
 	std::unique_ptr<DirectX::Mouse>         m_mouse;
-
+	std::unique_ptr<DirectX::CommonStates>  m_commonStates;
 };
