@@ -1,31 +1,23 @@
-#ifndef CUBE_H
-#define	CUBE_H
+#pragma once
 
-#include "pch.h"
-
-#include "Block.h"
 #include "Engine/Buffer.h"
 #include "Engine/VertexLayout.h"
+#include "Block.h"
 
-class Cube
-{
+using namespace DirectX::SimpleMath;
+
+class Cube {
+	VertexBuffer<VertexLayout_PositionUV> vBuffer;
+	IndexBuffer iBuffer;
+	Matrix mModel;
+	BlockId id;
 public:
-	Cube(float x, float y, float z, BlockId data);
+	Cube(Vector3 pos, BlockId id);
 
 	void Generate(DeviceResources* deviceRes);
 	void Draw(DeviceResources* deviceRes);
-
-	DirectX::SimpleMath::Matrix GetModelMatrix();
+	const Matrix& GetLocalMatrix() const { return mModel; }
 
 private:
-	VertexBuffer<VertexLayout_PositionNormalUV> vertexBuffer;
-	IndexBuffer indexBuffer;
-
-	DirectX::SimpleMath::Vector3 position;
-
-	BlockData blockData;
-	
-	void PushFace(Vector3 pos, Vector3 up, Vector3 right,Vector3 norm, int texId);
+	void PushFace(Vector3 pos, Vector3 up, Vector3 right, int texId);
 };
-
-#endif

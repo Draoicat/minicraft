@@ -11,6 +11,10 @@ void Chunk::SetPosition(World* world, int cx, int cy, int cz) {
 }
 
 void Chunk::Generate(DeviceResources* deviceRes) {
+	for (int pass = SP_OPAQUE; pass < SP_COUNT; pass++) {
+		vBuffer[pass].Clear();
+		iBuffer[pass].Clear();
+	}
 	for (int z = 0; z < CHUNK_SIZE; z++) {
 		for (int y = 0; y < CHUNK_SIZE; y++) {
 			for (int x = 0; x < CHUNK_SIZE; x++) {
@@ -19,23 +23,36 @@ void Chunk::Generate(DeviceResources* deviceRes) {
 		}
 	}
 
-	vBuffer.Create(deviceRes);
-	iBuffer.Create(deviceRes);
+	for (int pass = SP_OPAQUE; pass < SP_COUNT; pass++) {
+		vBuffer[pass].Create(deviceRes);
+		iBuffer[pass].Create(deviceRes);
+	}
 }
 
-void Chunk::Draw(DeviceResources* deviceRes) {
-	if (iBuffer.Size() == 0) return;
-	vBuffer.Apply(deviceRes);
-	iBuffer.Apply(deviceRes);
-	deviceRes->GetD3DDeviceContext()->DrawIndexed(iBuffer.Size(), 0, 0);
+void Chunk::Draw(DeviceResources* deviceRes, ShaderPass pass) {
+	if (iBuffer[pass].Size() == 0) return;
+	vBuffer[pass].Apply(deviceRes);
+	iBuffer[pass].Apply(deviceRes);
+	deviceRes->GetD3DDeviceContext()->DrawIndexed(iBuffer[pass].Size(), 0, 0);
 }
 
 bool Chunk::ShouldRenderFace(int lx, int ly, int lz, int dx, int dy, int dz) {
-	auto blockId = world->GetCube(
+	auto blockIdNeighbour = world->GetCube(
 		cx * CHUNK_SIZE + lx + dx, 
 		cy * CHUNK_SIZE + ly + dy, 
 		cz * CHUNK_SIZE + lz + dz);
-	return (!blockId || *blockId == EMPTY);
+	if (!blockIdNeighbour || *blockIdNeighbour == EMPTY) return true;
+
+	auto blockId = world->GetCube(
+		cx * CHUNK_SIZE + lx,
+		cy * CHUNK_SIZE + ly,
+		cz * CHUNK_SIZE + lz);
+	auto& blockData = BlockData::Get(*blockId);
+	auto& blockDataNeighbour = BlockData::Get(*blockIdNeighbour);
+
+	if (blockData.pass == SP_OPAQUE && blockDataNeighbour.pass == SP_TRANSPARENT) return true;
+
+	return false;
 }
 
 BlockId* Chunk::GetChunkCube(int lx, int ly, int lz) {
@@ -53,24 +70,34 @@ void Chunk::PushCube(int lx, int ly, int lz) {
 	if (!blockId || *blockId == EMPTY) return;
 	auto& blockData = BlockData::Get(*blockId);
 
+	float scaleY = 1.0f;
+	if (*blockId == WATER) {
+		auto blockIdNeighbour = world->GetCube(
+			cx * CHUNK_SIZE + lx,
+			cy * CHUNK_SIZE + ly + 1,
+			cz * CHUNK_SIZE + lz);
+		if (!blockIdNeighbour || *blockIdNeighbour == EMPTY)
+			scaleY = 0.8f;
+	}
+
 	Vector3 offset = Vector3(lx, ly, lz);
-	if (ShouldRenderFace(lx, ly, lz, 0, 0, 1)) PushFace(offset + Vector3::Zero, Vector3::Up, Vector3::Right, Vector3::Forward, blockData.texIdSide);
-	if (ShouldRenderFace(lx, ly, lz, 1, 0, 0)) PushFace(offset + Vector3::Right, Vector3::Up, Vector3::Forward, Vector3::Right, blockData.texIdSide);
-	if (ShouldRenderFace(lx, ly, lz, 0, 0, -1)) PushFace(offset + Vector3::Right + Vector3::Forward, Vector3::Up, Vector3::Left, Vector3::Backward, blockData.texIdSide);
-	if (ShouldRenderFace(lx, ly, lz, -1, 0, 0)) PushFace(offset + Vector3::Forward, Vector3::Up, Vector3::Backward, Vector3::Left, blockData.texIdSide);
-	if (ShouldRenderFace(lx, ly, lz, 0, 1, 0)) PushFace(offset + Vector3::Up, Vector3::Forward, Vector3::Right, Vector3::Up, blockData.texIdTop);
-	if (ShouldRenderFace(lx, ly, lz, 0, -1, 0)) PushFace(offset + Vector3::Right + Vector3::Forward, Vector3::Left, Vector3::Backward, Vector3::Down, blockData.texIdBottom);
+	if (ShouldRenderFace(lx, ly, lz, 0, 0, 1)) PushFace(offset + Vector3::Zero, Vector3::Up * scaleY, Vector3::Right, blockData.texIdSide, blockData.pass);
+	if (ShouldRenderFace(lx, ly, lz, 1, 0, 0)) PushFace(offset + Vector3::Right, Vector3::Up * scaleY, Vector3::Forward, blockData.texIdSide, blockData.pass);
+	if (ShouldRenderFace(lx, ly, lz, 0, 0, -1)) PushFace(offset + Vector3::Right + Vector3::Forward, Vector3::Up * scaleY, Vector3::Left, blockData.texIdSide, blockData.pass);
+	if (ShouldRenderFace(lx, ly, lz, -1, 0, 0)) PushFace(offset + Vector3::Forward, Vector3::Up * scaleY, Vector3::Backward, blockData.texIdSide, blockData.pass);
+	if (ShouldRenderFace(lx, ly, lz, 0, 1, 0)) PushFace(offset + Vector3::Up * scaleY, Vector3::Forward, Vector3::Right, blockData.texIdTop, blockData.pass);
+	if (ShouldRenderFace(lx, ly, lz, 0, -1, 0)) PushFace(offset + Vector3::Right + Vector3::Forward, Vector3::Left, Vector3::Backward, blockData.texIdBottom, blockData.pass);
 }
 
-void Chunk::PushFace(Vector3 pos, Vector3 up, Vector3 right, Vector3 norm, int texId) {
+void Chunk::PushFace(Vector3 pos, Vector3 up, Vector3 right, int texId, ShaderPass pass) {
 	Vector2 uv(
 		texId % 16,
 		texId / 16
 	);
-	uint32_t bottomLeft = vBuffer.PushVertex(VertexLayout_PositionNormalUV(pos, norm, (uv + Vector2::UnitY) / 16.0f));
-	uint32_t bottomRight = vBuffer.PushVertex(VertexLayout_PositionNormalUV(pos + right, norm, (uv + Vector2::One) / 16.0f));
-	uint32_t upLeft = vBuffer.PushVertex(VertexLayout_PositionNormalUV(pos + up,norm, uv / 16.0f));
-	uint32_t upRight = vBuffer.PushVertex(VertexLayout_PositionNormalUV(pos + up + right,norm, (uv + Vector2::UnitX) / 16.0f));
-	iBuffer.PushTriangle(bottomLeft, upLeft, upRight);
-	iBuffer.PushTriangle(bottomLeft, upRight, bottomRight);
+	uint32_t bottomLeft = vBuffer[pass].PushVertex(VertexLayout_PositionUV(pos, (uv + Vector2::UnitY) / 16.0f));
+	uint32_t bottomRight = vBuffer[pass].PushVertex(VertexLayout_PositionUV(pos + right, (uv + Vector2::One) / 16.0f));
+	uint32_t upLeft = vBuffer[pass].PushVertex(VertexLayout_PositionUV(pos + up, uv / 16.0f));
+	uint32_t upRight = vBuffer[pass].PushVertex(VertexLayout_PositionUV(pos + up + right, (uv + Vector2::UnitX) / 16.0f));
+	iBuffer[pass].PushTriangle(bottomLeft, upLeft, upRight);
+	iBuffer[pass].PushTriangle(bottomLeft, upRight, bottomRight);
 }

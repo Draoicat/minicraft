@@ -1,11 +1,10 @@
-#ifndef BLOCK_H
-#define BLOCK_H
+#pragma once
 
 #define BLOCK_TEXSIZE 1.0f / 16.0f
 
 enum ShaderPass {
 	SP_OPAQUE,
-	SP_TRANSPARENT,
+	SP_TRANSPARENT, // water only for now
 
 	SP_COUNT
 };
@@ -99,4 +98,3 @@ public:
 
 	static const BlockData& Get(const BlockId id);
 };
-#endif BLOCK_H
