@@ -8,7 +8,6 @@ struct Output {
 	float4 pos : SV_POSITION;
     float3 norm : NORMAL0;
     float2 uv : TEXCOORD0;
-    float3 fragPos : FRAG0;
 };
 
 cbuffer ModelData : register(b0) {
@@ -32,11 +31,5 @@ Output main(Input input) {
     output.pos = mul(output.pos, Projection);
 
     output.norm = input.norm;
-
-    output.fragPos = mul(output.pos, Model);
-    //output.norm = mul(output.norm, Model);
-    //output.norm = mul(output.norm, View);
-    //output.norm = mul(output.norm, Projection);
-    
 	return output;
 }
