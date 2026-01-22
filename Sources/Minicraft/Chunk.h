@@ -1,39 +1,34 @@
-#ifndef CHUNK_H
-#define CHUNK_H
+#pragma once
 
-#include <array>
-
-#include "Block.h"
 #include "Engine/Buffer.h"
 #include "Engine/VertexLayout.h"
+#include "Block.h"
+#include <array>
 
-class Chunk
-{
+using namespace DirectX::SimpleMath;
+class World;
+
+class Chunk {
 public:
-	int static constexpr CHUNK_SIZE{ 16 };
-	int static constexpr CHINK_HEIGHT{ 25 };
+	constexpr static int CHUNK_SIZE = 8;
+private:
+	std::array<BlockId, CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE> data;
+	VertexBuffer<VertexLayout_PositionNormalUV> vBuffer;
+	IndexBuffer iBuffer;
+	Matrix mModel;
+	World* world;
+	int cx, cy, cz;
+public:
+	Chunk() = default;
 
-	Chunk(float x, float y, float z);
-
+	void SetPosition(World* world, int cx, int cy, int cz);
 	void Generate(DeviceResources* deviceRes);
 	void Draw(DeviceResources* deviceRes);
-	
-	BlockId* GetCubeLocal(int chunkX, int chunkY, int chunkZ);
-	DirectX::SimpleMath::Matrix GetModelMatrix();
+	const Matrix& GetLocalMatrix() const { return mModel; }
 
+	BlockId* GetChunkCube(int cx, int cy, int cz);
 private:
-	DirectX::SimpleMath::Vector3 position;
-
-	std::array<BlockId, CHUNK_SIZE * CHINK_HEIGHT * CHUNK_SIZE> data;
-
-	VertexBuffer<VertexLayout_PositionNormalUV> vertexBuffer;
-	IndexBuffer indexBuffer;
-
+	bool ShouldRenderFace(int cx, int cy, int cz, int dx, int dy, int dz);
+	void PushCube(int cx, int cy, int cz);
 	void PushFace(Vector3 pos, Vector3 up, Vector3 right, Vector3 norm, int texId);
-	void PushCube(int x, int y, int z);
-	bool ShouldRenderFace(int x, int y, int z, int dx, int dy, int dz);
-
-
 };
-
-#endif

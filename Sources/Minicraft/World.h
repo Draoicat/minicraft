@@ -1,30 +1,22 @@
-#ifndef WORLD_H
-#define WORLD_H
+#pragma once
 
-#include "Cube.h"
 #include "Block.h"
+#include "Cube.h"
 #include "Chunk.h"
+#include <array>
 
-class World
-{
-public:
-	World() = default;
+class World {
+	constexpr static int WORLD_SIZE = 16;
+	std::array<Chunk, WORLD_SIZE * WORLD_SIZE * WORLD_SIZE> chunks;
 
-	void Generate(DeviceResources* deviceRes);
-	void Draw(DeviceResources* device);
-
-	//BlockId* GetCube(int globalX, int globalY, int globalZ);
-
-private:
-	struct ModelData
-	{
+	struct CubeData {
 		Matrix mModel;
-		Vector4 time;
 	};
+	ConstantBuffer<CubeData> cbModel;
+public:
+	void Generate(DeviceResources* res);
+	void Draw(DeviceResources* res);
 
-	ConstantBuffer<ModelData> cbModel;
-
-	std::vector<Chunk> chunks;
+	BlockId* GetCube(int gx, int gy, int gz);
+	void SetCube(int gx, int gy, int gz, BlockId id);
 };
-
-#endif
