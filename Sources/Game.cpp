@@ -10,8 +10,11 @@
 #include "Engine/VertexLayout.h"
 #include "Engine/Shader.h"
 #include "Engine/Texture.h"
-#include "Minicraft/Player.h"
+#include "Engine/Camera.h"
+#include "Minicraft/Cube.h"
+#include "Minicraft/Cube.h"
 #include "Minicraft/World.h"
+#include "Minicraft/Player.h"
 
 extern void ExitGame() noexcept;
 
@@ -21,11 +24,10 @@ using namespace DirectX::SimpleMath;
 using Microsoft::WRL::ComPtr;
 
 // Global stuff
+Player player;
 Shader basicShader(L"basic");
 Texture terrain(L"terrain");
-Camera camera(60, 1.0);
 World world;
-Player player(&camera, &world);
 
 Shader lineShader(L"Line");
 VertexBuffer<VertexLayout_PositionColor> debugLine;
@@ -44,87 +46,6 @@ Game::~Game() {
 	g_inputLayouts.clear();
 }
 
-std::vector<std::array<int, 3>> Raycast(Vector3 pos, Vector3 dir, float maxDistance) {
-	std::map<float, std::array<int, 3>> cubes;
-
-	if (dir.x != 0) {
-		float deltaY = dir.y / dir.x;
-		float deltaZ = dir.z / dir.x;
-		float offsetY = pos.y - pos.x * deltaY;
-		float offsetZ = pos.z - pos.x * deltaZ;
-
-		float currentX = (dir.x > 0) ? ceil(pos.x) : floor(pos.x);
-		do {
-			Vector3 collision = Vector3(
-				currentX,
-				offsetY + currentX * deltaY,
-				offsetZ + currentX * deltaZ
-			);
-			float dist = Vector3::Distance(pos, collision);
-			if (dist > maxDistance) break;
-			cubes[dist] = {
-				(int)(currentX - ((dir.x < 0) ? 1 : 0)),
-				(int)floor(collision.y),
-				(int)ceil(collision.z)
-			};
-			currentX += (dir.x > 0) ? 1 : -1;
-		} while (true);
-	}
-
-	if (dir.y != 0) {
-		float deltaX = dir.x / dir.y;
-		float deltaZ = dir.z / dir.y;
-		float offsetX = pos.x - pos.y * deltaX;
-		float offsetZ = pos.z - pos.y * deltaZ;
-
-		float currentY = (dir.y > 0) ? ceil(pos.y) : floor(pos.y);
-		do {
-			Vector3 collision = Vector3(
-				offsetX + currentY * deltaX,
-				currentY,
-				offsetZ + currentY * deltaZ
-			);
-			float dist = Vector3::Distance(pos, collision);
-			if (dist > maxDistance) break;
-			cubes[dist] = {
-				(int)floor(collision.x),
-				(int)(currentY - ((dir.y < 0) ? 1 : 0)),
-				(int)ceil(collision.z)
-			};
-			currentY += (dir.y > 0) ? 1 : -1;
-		} while (true);
-	}
-
-	if (dir.z != 0) {
-		float deltaX = dir.x / dir.z;
-		float deltaY = dir.y / dir.z;
-		float offsetX = pos.x - pos.z * deltaX;
-		float offsetY = pos.y - pos.z * deltaY;
-
-		float currentZ = (dir.z > 0) ? ceil(pos.z) : floor(pos.z);
-		do {
-			Vector3 collision = Vector3(
-				offsetX + currentZ * deltaX,
-				offsetY + currentZ * deltaY,
-				currentZ
-			);
-			float dist = Vector3::Distance(pos, collision);
-			if (dist > maxDistance) break;
-			cubes[dist] = {
-				(int)floor(collision.x),
-				(int)floor(collision.y),
-				(int)(currentZ - ((dir.z > 0) ? 1 : 0)),
-			};
-			currentZ += (dir.z > 0) ? 1 : -1;
-		} while (true);
-	}
-
-	std::vector<std::array<int, 3>> result;
-	for (auto& cube : cubes)
-		result.push_back(cube.second);
-	return result;
-}
-
 void Game::Initialize(HWND window, int width, int height) {
 	// Create input devices
 	m_gamePad = std::make_unique<GamePad>();
@@ -140,8 +61,9 @@ void Game::Initialize(HWND window, int width, int height) {
 
 	basicShader.Create(m_deviceResources.get());
 
-	camera.UpdateAspectRatio((float)width / (float)height);
-	camera.Create(m_deviceResources.get());
+	player.GetCamera().UpdateAspectRatio((float)width / (float)height);
+	player.GetCamera().Create(m_deviceResources.get());
+	player.SetWorld(&world);
 
 	auto device = m_deviceResources->GetD3DDevice();
 
@@ -153,6 +75,7 @@ void Game::Initialize(HWND window, int width, int height) {
 	GenerateInputLayout<VertexLayout_PositionColor>(m_deviceResources.get(), &lineShader);
 
 	world.Generate();
+	world.CreateMesh(m_deviceResources.get());
 	terrain.Create(m_deviceResources.get());
 
 
@@ -165,13 +88,12 @@ void Game::Initialize(HWND window, int width, int height) {
 	debugLine.PushVertex(VertexLayout_PositionColor(pos + dir * 20, { 1,0,0,1 }));
 	debugLine.Create(m_deviceResources.get());
 
-	auto res = Raycast(pos, dir, maxDist);
+	/*auto res = Raycast(pos, dir, maxDist);
 	for (auto& cube : res)
 		world.SetCube(cube[0], cube[1], cube[2], EMPTY);
-	world.CreateMesh(m_deviceResources.get());
+	world.CreateMesh(m_deviceResources.get());*/
 
-	camera.SetRotation(Quaternion(0.0297699161, 0.904104531, 0.0638608783, -0.421462208));
-	camera.SetPosition(Vector3(17, 16.59, 16.6));
+	//camera.SetPosition(Vector3(17, 16.59, 16.6));
 
 	// Setup Dear ImGui context
 	IMGUI_CHECKVERSION();
@@ -198,7 +120,7 @@ void Game::Tick() {
 	Render();
 }
 
-bool imGuiMode = true;
+bool imGuiMode = false;
 
 // Updates the world.
 void Game::Update(DX::StepTimer const& timer) {
@@ -211,12 +133,10 @@ void Game::Update(DX::StepTimer const& timer) {
 	if (imGuiMode) {
 		m_mouse->SetMode(Mouse::MODE_ABSOLUTE);
 
-		world.ShowImGui(m_deviceResources.get());
-	} else {
-		m_mouse->SetMode(Mouse::MODE_RELATIVE);
-
-		double dt = timer.GetElapsedSeconds();
-		player.update(kb, ms, dt);
+		player.Update(timer.GetElapsedSeconds(), kb, ms);
+		rot *= Quaternion::CreateFromAxisAngle(camera.Right(), -ms.y * dt * 0.2f);
+		rot *= Quaternion::CreateFromAxisAngle(Vector3::Up, -ms.x * dt * 0.2f);
+		camera.SetRotation(rot);
 	}
 	
 	if (kb.Escape)
@@ -247,7 +167,12 @@ void Game::Render() {
 
 	basicShader.Apply(m_deviceResources.get());
 	terrain.Apply(m_deviceResources.get());
-	camera.Apply(m_deviceResources.get());
+	player.GetCamera().Apply(m_deviceResources.get());
+
+	if (world.regen) {
+		world.CreateMesh(m_deviceResources.get());
+		world.regen = false;
+	}
 
 	context->OMSetBlendState(m_commonStates->Opaque(), NULL, 0xffffffff);
 	world.Draw(m_deviceResources.get(), ShaderPass::SP_OPAQUE);
@@ -297,7 +222,7 @@ void Game::OnWindowSizeChanged(int width, int height) {
 	if (!m_deviceResources->WindowSizeChanged(width, height))
 		return;
 
-	camera.UpdateAspectRatio((float)width / (float)height);
+	player.GetCamera().UpdateAspectRatio((float)width / (float)height);
 	// The windows size has changed:
 	// We can realloc here any resources that depends on the target resolution (post processing etc)
 }

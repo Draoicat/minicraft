@@ -1,31 +1,27 @@
-#ifndef PLAYER_H
-#define PLAYER_H
+#pragma once
 
 #include "World.h"
 #include "Engine/Camera.h"
 
-class Player
-{
-	Camera* camera;
-	World* world;
+class World;
 
-	Vector3 position;
+class Player {
+	World* world;
+	Camera camera = Camera(60, 1.0f);
+
+	Vector3 position = Vector3(25, 25, 25);
 	Vector3 velocity;
 
 	float yaw;
 	float pitch;
 
+	Keyboard::KeyboardStateTracker kbTracker;
+	Mouse::ButtonStateTracker msTracker;
 public:
-	float constexpr static GRAVITY{ 1.0f };
+	void SetWorld(World* world) { this->world = world; }
+	void Update(float dt, const Keyboard::State& kb, const Mouse::State& ms);
 
-	Player(Camera* camera, World* world);
-	Quaternion rotation;
-
-
-	void update(DirectX::Keyboard::State const& kb, DirectX::Mouse::State const& ms, double dt);
-	Vector3 applyGravity();
-
-
+	Camera& GetCamera() { return camera; }
 };
 
 #endif
