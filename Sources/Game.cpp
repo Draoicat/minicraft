@@ -27,6 +27,10 @@ Texture terrain(L"terrain");
 Camera camera(60, 1.0);
 World world;
 
+
+Shader lineShader(L"Line");
+VertexBuffer<VertexLayout_PositionColor> debugLine;
+
 // Game
 Game::Game() noexcept(false) {
 	m_deviceResources = std::make_unique<DeviceResources>(DXGI_FORMAT_B8G8R8A8_UNORM_SRGB, DXGI_FORMAT_D32_FLOAT, 2);
@@ -64,6 +68,12 @@ void Game::Initialize(HWND window, int width, int height) {
 	m_commonStates = std::make_unique<CommonStates>(device);
 
 	GenerateInputLayout<VertexLayout_PositionNormalUV>(m_deviceResources.get(), &basicShader);
+
+	lineShader.Create(m_deviceResources.get());
+	GenerateInputLayout<VertexLayout_PositionColor>(m_deviceResources.get(), &lineShader);
+	debugLine.PushVertex(VertexLayout_PositionColor({ 0, 0, 0 }, { 1,0,0,1 }));
+	debugLine.PushVertex(VertexLayout_PositionColor({ 10, 10, 10 }, { 1,0,0,1 }));
+	debugLine.Create(m_deviceResources.get());
 
 	world.Generate(m_deviceResources.get());
 	terrain.Create(m_deviceResources.get());
@@ -162,6 +172,15 @@ void Game::Render() {
 	world.Draw(m_deviceResources.get(), ShaderPass::SP_OPAQUE);
 	context->OMSetBlendState(m_commonStates->AlphaBlend(), NULL, 0xffffffff);
 	world.Draw(m_deviceResources.get(), ShaderPass::SP_TRANSPARENT);
+
+
+	context->OMSetBlendState(m_commonStates->Opaque(), NULL, 0xffffffff);
+	context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+	ApplyInputLayout<VertexLayout_PositionColor>(m_deviceResources.get());
+	lineShader.Apply(m_deviceResources.get());
+	debugLine.Apply(m_deviceResources.get());
+	context->Draw(2, 0);
+
 
 	ImGui::Render();
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
