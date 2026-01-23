@@ -10,7 +10,7 @@ class Camera {
 	float farPlane = 5000.0f;
 	float fov = 60.0f;
 	DirectX::SimpleMath::Quaternion rotation = Quaternion::Identity;
-	DirectX::SimpleMath::Vector3 position = Vector3::Backward * 5;
+	DirectX::SimpleMath::Vector3 position = Vector3::Up * 100;
 
 	DirectX::SimpleMath::Matrix view;
 	DirectX::SimpleMath::Matrix proj;

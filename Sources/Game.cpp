@@ -25,7 +25,7 @@ Shader basicShader(L"basic");
 Texture terrain(L"terrain");
 Camera camera(60, 1.0);
 World world;
-Player player(&camera);
+Player player(&camera, &world);
 
 Shader lineShader(L"Line");
 VertexBuffer<VertexLayout_PositionColor> debugLine;

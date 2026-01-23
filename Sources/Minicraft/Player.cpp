@@ -6,31 +6,35 @@
 #include "Mouse.h"
 #include "SimpleMath.h"
 
-Player::Player(Camera* camera) : 
-	camera(camera)
+Player::Player(Camera* camera, World* world) : 
+	camera(camera), world{ world }, yaw {0}, pitch{ 0 }
 {
 	
 }
 
 void Player::update(DirectX::Keyboard::State const& kb, DirectX::Mouse::State const& ms, double dt)
 {
-	DirectX::SimpleMath::Vector3 delta = DirectX::SimpleMath::Vector3::Zero;
-	if (kb.Z) delta += camera->Forward();
-	if (kb.S) delta -= camera->Forward();
-	if (kb.Q) delta -= camera->Right();
-	if (kb.D) delta += camera->Right();
-	if (kb.Space) delta += camera->Up();
-	if (kb.LeftShift) delta -= camera->Up();
-	//delta = Vector3::TransformNormal(delta, camera.GetInverseViewMatrix());
+	Vector3 delta =Vector3::Zero;
+	if (kb.Z) delta += Vector3::Forward;
+	if (kb.S) delta -= Vector3::Forward;
+	if (kb.Q) delta -= Vector3::Right;
+	if (kb.D) delta += Vector3::Right;
+	delta.y = 0;
+	delta.Normalize(); //incroyable
+	delta += applyGravity();
 	camera->SetPosition(camera->GetPosition() + delta * 10.0f * dt);
 
-	DirectX::SimpleMath::Quaternion rot = camera->GetRotation();
-	rot *= DirectX::SimpleMath::Quaternion::CreateFromAxisAngle(camera->Right(), -ms.y * dt * 0.2f);
-	rot *= DirectX::SimpleMath::Quaternion::CreateFromAxisAngle(DirectX::SimpleMath::Vector3::Up, -ms.x * dt * 0.2f);
+	pitch -= ms.x * dt * 0.2f;
+	yaw -= ms.y * dt * 0.2f;
+	yaw = std::clamp(yaw, -1.4f, 1.4f);
+	Quaternion rot = Quaternion::CreateFromAxisAngle(Vector3::Right, yaw);
+	rot *= Quaternion::CreateFromAxisAngle(Vector3::Up, pitch);
 	camera->SetRotation(rot);
 }
 
-void Player::applyGravity()
+Vector3 Player::applyGravity()
 {
-
+	if (*world->GetCube(camera->GetPosition().x, camera->GetPosition().y - 1, camera->GetPosition().z) != EMPTY)
+		return Vector3::Zero;
+	return Vector3::Down / 2;
 }
