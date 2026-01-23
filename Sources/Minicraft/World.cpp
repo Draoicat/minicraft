@@ -2,25 +2,32 @@
 
 #include "World.h"
 #include "PerlinNoise.hpp"
+#include "Random.h"
 
 using namespace DirectX::SimpleMath;
 
+int seed = 2000;
+
 float perlinScaleStone = 0.02f;
-int perlinOctaveStone = 4;
-float perlinHeightStone = 14.0f;
+int perlinOctaveStone = 2;
+float perlinHeightStone = 30.0f;
 float perlinScaleDirt = 0.07f;
-int perlinOctaveDirt = 2;
+int perlinOctaveDirt = 0;
 float perlinHeightDirt = 8.0f;
-float waterHeight = 11.0f;
+float waterHeight = 15.0f;
 
 void World::Generate(DeviceResources* res) {
+	//Random::get(-500.0f, 500.0f);
 	siv::BasicPerlinNoise<float> perlin;
 	const int GLOBAL_SIZE = WORLD_SIZE * Chunk::CHUNK_SIZE;
+	const int GLOBAL_HEIGHT = WORLD_HEIGHT * Chunk::CHUNK_SIZE;
 
 	for (int z = 0; z < GLOBAL_SIZE; z++) {
 		for (int x = 0; x < GLOBAL_SIZE; x++) {
-			for (int y = 0; y < GLOBAL_SIZE; y++)
+			for (int y = 0; y < GLOBAL_HEIGHT; y++)
+			{
 				SetCube(x, y, z, EMPTY);
+			}
 
 			int yStone = perlin.octave2D_01(x * perlinScaleStone, z * perlinScaleStone, perlinOctaveStone) * perlinHeightStone;
 			int yDirt = yStone + perlin.octave2D_01(x * perlinScaleDirt, z * perlinScaleDirt, perlinOctaveDirt) * perlinHeightDirt;
@@ -62,10 +69,10 @@ void World::Generate(DeviceResources* res) {
 	}*/
 
 	for (int z = 0; z < WORLD_SIZE; z++) {
-		for (int y = 0; y < WORLD_SIZE; y++) {
+		for (int y = 0; y < WORLD_HEIGHT; y++) {
 			for (int x = 0; x < WORLD_SIZE; x++) {
-				chunks[x + y * WORLD_SIZE + z * WORLD_SIZE * WORLD_SIZE].SetPosition(this, x, y, z);
-				chunks[x + y * WORLD_SIZE + z * WORLD_SIZE * WORLD_SIZE].Generate(res);
+				chunks[x + y * WORLD_SIZE + z * WORLD_HEIGHT * WORLD_SIZE].SetPosition(this, x, y, z);
+				chunks[x + y * WORLD_SIZE + z * WORLD_HEIGHT * WORLD_SIZE].Generate(res);
 			}
 		}
 	}
@@ -95,10 +102,10 @@ BlockId* World::GetCube(int gx, int gy, int gz) {
 	if (cy < 0) return nullptr;
 	if (cz < 0) return nullptr;
 	if (cx >= WORLD_SIZE) return nullptr;
-	if (cy >= WORLD_SIZE) return nullptr;
+	if (cy >= WORLD_HEIGHT) return nullptr;
 	if (cz >= WORLD_SIZE) return nullptr;
 
-	return chunks[cx + cy * WORLD_SIZE + cz * WORLD_SIZE * WORLD_SIZE].GetChunkCube(lx, ly, lz);
+	return chunks[cx + cy * WORLD_SIZE + cz * WORLD_HEIGHT * WORLD_SIZE].GetChunkCube(lx, ly, lz);
 }
 
 void World::SetCube(int gx, int gy, int gz, BlockId id) {
@@ -117,8 +124,19 @@ void World::ShowImGui(DeviceResources* res) {
 	ImGui::DragInt("perlinOctaveDirt", &perlinOctaveDirt, 0.1f);
 	ImGui::DragFloat("perlinHeightDirt", &perlinHeightDirt, 0.1f);
 
+	ImGui::DragFloat("waterHeight", &waterHeight, 0.1f);
+
 	if (ImGui::Button("Generate!"))
 		Generate(res);
 
 	ImGui::End();
+}
+
+std::vector<std::array<int, 3>> World::Raycast(Vector3 pos, Vector3 dir, float maxDist)
+{
+	Vector3 goal = pos + dir;
+
+	float deltaY = (goal.y - pos.y) / (goal.x - pos.x);
+	float deltaZ = (goal.z - pos.z) / (goal.x - pos.x);
+
 }

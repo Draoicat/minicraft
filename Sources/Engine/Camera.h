@@ -41,4 +41,3 @@ private:
 	void UpdateViewMatrix();
 };
 
-#endif

@@ -94,10 +94,12 @@ void Chunk::PushFace(Vector3 pos, Vector3 up, Vector3 right, int texId, ShaderPa
 		texId % 16,
 		texId / 16
 	);
-	uint32_t bottomLeft = vBuffer[pass].PushVertex(VertexLayout_PositionUV(pos, (uv + Vector2::UnitY) / 16.0f));
-	uint32_t bottomRight = vBuffer[pass].PushVertex(VertexLayout_PositionUV(pos + right, (uv + Vector2::One) / 16.0f));
-	uint32_t upLeft = vBuffer[pass].PushVertex(VertexLayout_PositionUV(pos + up, uv / 16.0f));
-	uint32_t upRight = vBuffer[pass].PushVertex(VertexLayout_PositionUV(pos + up + right, (uv + Vector2::UnitX) / 16.0f));
+	Vector3 normal = up.Cross(right);
+	normal.Normalize();
+	uint32_t bottomLeft = vBuffer[pass].PushVertex(VertexLayout_PositionNormalUV(pos, normal,(uv + Vector2::UnitY) / 16.0f));
+	uint32_t bottomRight = vBuffer[pass].PushVertex(VertexLayout_PositionNormalUV(pos + right, normal,(uv + Vector2::One) / 16.0f));
+	uint32_t upLeft = vBuffer[pass].PushVertex(VertexLayout_PositionNormalUV(pos + up, normal, uv / 16.0f));
+	uint32_t upRight = vBuffer[pass].PushVertex(VertexLayout_PositionNormalUV(pos + up + right, normal,(uv + Vector2::UnitX) / 16.0f));
 	iBuffer[pass].PushTriangle(bottomLeft, upLeft, upRight);
 	iBuffer[pass].PushTriangle(bottomLeft, upRight, bottomRight);
 }
