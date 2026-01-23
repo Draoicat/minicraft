@@ -132,11 +132,3 @@ void World::ShowImGui(DeviceResources* res) {
 	ImGui::End();
 }
 
-std::vector<std::array<int, 3>> World::Raycast(Vector3 pos, Vector3 dir, float maxDist)
-{
-	Vector3 goal = pos + dir;
-
-	float deltaY = (goal.y - pos.y) / (goal.x - pos.x);
-	float deltaZ = (goal.z - pos.z) / (goal.x - pos.x);
-
-}

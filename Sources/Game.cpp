@@ -10,8 +10,7 @@
 #include "Engine/VertexLayout.h"
 #include "Engine/Shader.h"
 #include "Engine/Texture.h"
-#include "Engine/Camera.h"
-#include "Minicraft/Cube.h"
+#include "Minicraft/Player.h"
 #include "Minicraft/World.h"
 
 extern void ExitGame() noexcept;
@@ -26,7 +25,7 @@ Shader basicShader(L"basic");
 Texture terrain(L"terrain");
 Camera camera(60, 1.0);
 World world;
-
+Player player(&camera);
 
 Shader lineShader(L"Line");
 VertexBuffer<VertexLayout_PositionColor> debugLine;
@@ -121,21 +120,7 @@ void Game::Update(DX::StepTimer const& timer) {
 		m_mouse->SetMode(Mouse::MODE_RELATIVE);
 
 		double dt = timer.GetElapsedSeconds();
-	
-		Vector3 delta = Vector3::Zero;
-		if (kb.Z) delta += camera.Forward();
-		if (kb.S) delta -= camera.Forward();
-		if (kb.Q) delta -= camera.Right();
-		if (kb.D) delta += camera.Right();
-		if (kb.Space) delta += camera.Up();
-		if (kb.LeftShift) delta -= camera.Up();
-		//delta = Vector3::TransformNormal(delta, camera.GetInverseViewMatrix());
-		camera.SetPosition(camera.GetPosition() + delta * 10.0f * dt);
-	
-		Quaternion rot = camera.GetRotation();
-		rot *= Quaternion::CreateFromAxisAngle(camera.Right(), -ms.y * dt * 0.2f);
-		rot *= Quaternion::CreateFromAxisAngle(Vector3::Up, -ms.x * dt * 0.2f);
-		camera.SetRotation(rot);
+		player.update(kb, ms, dt);
 	}
 	
 	if (kb.Escape)
