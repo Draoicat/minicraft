@@ -16,8 +16,7 @@ int perlinOctaveDirt = 0;
 float perlinHeightDirt = 8.0f;
 float waterHeight = 15.0f;
 
-void World::Generate(DeviceResources* res) {
-	//Random::get(-500.0f, 500.0f);
+void World::Generate() {
 	siv::BasicPerlinNoise<float> perlin;
 	const int GLOBAL_SIZE = WORLD_SIZE * Chunk::CHUNK_SIZE;
 	const int GLOBAL_HEIGHT = WORLD_HEIGHT * Chunk::CHUNK_SIZE;
@@ -67,7 +66,9 @@ void World::Generate(DeviceResources* res) {
 			SetCube(x, 6, z, GRASS);
 		}
 	}*/
+}
 
+void World::CreateMesh(DeviceResources * res) {
 	for (int z = 0; z < WORLD_SIZE; z++) {
 		for (int y = 0; y < WORLD_HEIGHT; y++) {
 			for (int x = 0; x < WORLD_SIZE; x++) {
@@ -124,10 +125,10 @@ void World::ShowImGui(DeviceResources* res) {
 	ImGui::DragInt("perlinOctaveDirt", &perlinOctaveDirt, 0.1f);
 	ImGui::DragFloat("perlinHeightDirt", &perlinHeightDirt, 0.1f);
 
-	ImGui::DragFloat("waterHeight", &waterHeight, 0.1f);
-
-	if (ImGui::Button("Generate!"))
-		Generate(res);
+	if (ImGui::Button("Generate!")) {
+		Generate();
+		CreateMesh(res);
+	}
 
 	ImGui::End();
 }
