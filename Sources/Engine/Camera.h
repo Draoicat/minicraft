@@ -40,3 +40,5 @@ public:
 private:
 	void UpdateViewMatrix();
 };
+
+#endif
