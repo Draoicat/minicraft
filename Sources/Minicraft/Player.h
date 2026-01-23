@@ -24,4 +24,3 @@ public:
 	Camera& GetCamera() { return camera; }
 };
 
-#endif

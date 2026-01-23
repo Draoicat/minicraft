@@ -124,40 +124,11 @@ bool imGuiMode = false;
 
 // Updates the world.
 void Game::Update(DX::StepTimer const& timer) {
-	auto const kb = m_keyboard->GetState();
-	auto const ms = m_mouse->GetState();
-
-	if (kb.P) imGuiMode = true;
-	if (kb.M) imGuiMode = false;
-
-	if (imGuiMode) {
-		m_mouse->SetMode(Mouse::MODE_ABSOLUTE);
-
-		player.Update(timer.GetElapsedSeconds(), kb, ms);
-		rot *= Quaternion::CreateFromAxisAngle(camera.Right(), -ms.y * dt * 0.2f);
-		rot *= Quaternion::CreateFromAxisAngle(Vector3::Up, -ms.x * dt * 0.2f);
-		camera.SetRotation(rot);
-	}
-	
-	if (kb.Escape)
-		ExitGame();
+	auto const kb
 
 	auto const pad = m_gamePad->GetState(0);
 }
-
-// Draws the scene.
-void Game::Render() {
-	// Don't try to render anything before the first Update.
-	if (m_timer.GetFrameCount() == 0)
-		return;
-
-	auto context = m_deviceResources->GetD3DDeviceContext();
-	auto renderTarget = m_deviceResources->GetRenderTargetView();
-	auto depthStencil = m_deviceResources->GetDepthStencilView();
-	auto const viewport = m_deviceResources->GetScreenViewport();
-
-	context->ClearRenderTargetView(renderTarget, ColorsLinear::CornflowerBlue);
-	context->ClearDepthStencilView(depthStencil, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+ncil, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 	context->RSSetViewports(1, &viewport);
 	context->OMSetRenderTargets(1, &renderTarget, depthStencil);
 	
